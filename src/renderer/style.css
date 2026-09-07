@@ -2706,3 +2706,13 @@ a {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+.publishing-connections { display: grid; gap: 20px; }
+.publishing-connections .settings-card { flex-wrap: wrap; gap: 16px; }
+.job-main { min-width: 0; flex: 1; }
+.job-main > .automation-actions { display: grid; gap: 8px; margin-top: 16px; max-width: 760px; overflow-wrap: anywhere; }
+.automation-actions > p { margin: 0; }
+.automation-actions > .state { justify-self: start; }
+.job-actions { flex-shrink: 0; align-self: flex-start; }
+.automation-actions .button-row { margin-top: 10px; flex-wrap: wrap; }
+.automation-events { padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; max-height: 220px; overflow: auto; }
+.automation-events p { font-size: 12px; }

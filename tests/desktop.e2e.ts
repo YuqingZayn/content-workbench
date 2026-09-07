@@ -14,6 +14,7 @@ import {
   ftruncateSync,
   closeSync,
   unlinkSync,
+  readFileSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -140,9 +141,7 @@ test("native platform forms, media formats, message editing and persisted metada
     await page
       .getByLabel("Codex 任务方式", { exact: true })
       .selectOption("task");
-    await page
-      .getByLabel("Codex 参考版本", { exact: true })
-      .selectOption("");
+    await page.getByLabel("Codex 参考版本", { exact: true }).selectOption("");
     await page
       .getByLabel("视频可见性", { exact: true })
       .selectOption("unlisted");
@@ -1130,6 +1129,172 @@ test("large-image pages use cached previews and load originals only on request",
       JSON.stringify(report, null, 2),
     );
     console.log(JSON.stringify(report));
+  } finally {
+    await app.close();
+  }
+});
+
+test("v0.2 publishing connections, simulation and restart keep honest receipts", async () => {
+  const root = path.join(base, "v02发布模拟");
+  mkdirSync(root);
+  let { app, page } = await launch();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  try {
+    await dialogFiles(app, [root]);
+    await page
+      .getByRole("button", { name: "打开本地文件夹", exact: true })
+      .click();
+    await page.getByRole("button", { name: "账号与定位", exact: true }).click();
+    await page
+      .getByRole("button", { name: "自动发布连接", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "创建模拟账号与目标", exact: true })
+      .click();
+    const selector = page.getByLabel("自动发布连接目标", { exact: true });
+    await expect(selector.locator("option")).toHaveCount(2);
+    await selector.selectOption({ index: 1 });
+    await page
+      .getByRole("button", { name: "保存连接配置", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "检查发布连接", exact: true })
+      .click();
+    await expect(
+      page.getByText("连接已检查 · 仅模拟", { exact: true }),
+    ).toBeVisible();
+    await page.screenshot({ path: ".local/e2e-evidence/v02-connections.png" });
+    await page.getByRole("button", { name: "素材库", exact: true }).click();
+    await dialogFiles(app, [path.resolve("tests/fixtures/demo-1.png")]);
+    await page.getByRole("button", { name: "导入素材", exact: true }).click();
+    await expect(page.locator(".asset-card")).toHaveCount(1);
+    await page.getByRole("button", { name: "内容库", exact: true }).click();
+    await page.getByRole("button", { name: "新建内容", exact: true }).click();
+    await page.getByLabel("主题名称", { exact: true }).fill("V0.2 图文模拟");
+    await page.getByRole("button", { name: "创建主题", exact: true }).click();
+    await addVariant(
+      page,
+      "discord",
+      "zh-CN",
+      "合成模拟图文，不向任何平台发送。",
+    );
+    await page.getByRole("button", { name: "选择素材", exact: true }).click();
+    await page.locator(".asset-pick").filter({ hasText: "demo-1.png" }).click();
+    await page.getByRole("button", { name: "完成选择", exact: true }).click();
+    await page.getByRole("button", { name: "保存草稿", exact: true }).click();
+    await expect(page.locator(".save-state")).toHaveText("已保存到本地");
+    await page.getByRole("button", { name: "标记就绪", exact: true }).click();
+    await page.getByRole("button", { name: "安排发布", exact: true }).click();
+    const modal = page.getByRole("dialog");
+    await modal
+      .getByLabel("发布方式", { exact: true })
+      .selectOption("simulation");
+    await modal.getByRole("checkbox", { name: /本地模拟目标/ }).check();
+    await modal.getByLabel("确认自动发布", { exact: true }).check();
+    await modal
+      .getByRole("button", { name: "创建 1 个目标任务", exact: true })
+      .click();
+    await page.getByRole("button", { name: "发布记录", exact: true }).click();
+    await expect(page.locator(".job-row")).toHaveCount(1);
+    await expect(page.locator(".job-row")).toContainText("已核实发布", {
+      timeout: 25000,
+    });
+    await expect(page.locator(".job-row")).toContainText("模拟 · 无外部发送");
+    await expect(page.locator(".job-row")).toContainText("尝试 1 次");
+    await page.getByRole("button", { name: "设置与备份", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "后台发布项目", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "隐藏到托盘，继续处理", exact: true })
+      .click();
+    expect(
+      await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].isVisible(),
+      ),
+    ).toBe(false);
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].show(),
+    );
+    await page.getByRole("button", { name: "发布记录", exact: true }).click();
+    await page.getByRole("button", { name: "操作记录", exact: true }).click();
+    await expect(page.locator(".automation-events")).toContainText(
+      "提交意图已持久化",
+    );
+    await page.screenshot({ path: ".local/e2e-evidence/v02-simulation.png" });
+    await app.close();
+    ({ app, page } = await launch());
+    const background = await page.evaluate(() =>
+      window.workbench.call<{ name: string; enabled: boolean }[]>(
+        "background.list",
+      ),
+    );
+    expect(background.find((p) => p.name === "v02发布模拟")?.enabled).toBe(
+      true,
+    );
+    const fixtureWebhook =
+      "https://discord.com/api/webhooks/123/v02-fixture-not-a-real-secret";
+    const saved = await page.evaluate(async (webhook) => {
+      const bootstrap = await window.workbench.call<{
+        recent: { id: string; name: string }[];
+      }>("app.bootstrap");
+      const projectId = bootstrap.recent.find(
+        (p) => p.name === "v02发布模拟",
+      )!.id;
+      let w = await window.workbench.call<Workspace>("accounts.add", {
+        projectId,
+        platform: "discord",
+        label: "本地凭据测试",
+        externalId: "",
+        accountType: "webhook",
+      });
+      w = await window.workbench.call<Workspace>("targets.add", {
+        projectId,
+        accountId: w.accounts.at(-1)!.id,
+        label: "凭据隔离测试",
+        kind: "channel",
+      });
+      const connections = await window.workbench.call<
+        { id: string; targetId: string }[]
+      >("connections.save", {
+        projectId,
+        connection: { targetId: w.targets.at(-1)!.id, provider: "discord" },
+        secrets: { webhook },
+      });
+      return {
+        connections,
+        id: connections.find((c) => c.targetId === w.targets.at(-1)!.id)!.id,
+      };
+    }, fixtureWebhook);
+    expect(JSON.stringify(saved.connections)).not.toContain(fixtureWebhook);
+    const encrypted = readFileSync(
+      path.join(userData, "publishing/credentials.json"),
+      "utf8",
+    );
+    expect(encrypted).not.toContain(fixtureWebhook);
+    const ciphertext = JSON.parse(encrypted)[saved.id] as string;
+    expect(
+      await app.evaluate(
+        ({ safeStorage }, args) => {
+          return (
+            safeStorage.isEncryptionAvailable() &&
+            JSON.parse(
+              safeStorage.decryptString(Buffer.from(args.ciphertext, "base64")),
+            ).webhook === args.fixtureWebhook
+          );
+        },
+        { ciphertext, fixtureWebhook },
+      ),
+    ).toBe(true);
+    await dialogFiles(app, [root]);
+    await page
+      .getByRole("button", { name: "打开本地文件夹", exact: true })
+      .click();
+    await page.getByRole("button", { name: "发布记录", exact: true }).click();
+    await expect(page.locator(".job-row")).toContainText("已核实发布");
+    await expect(page.locator(".job-row")).toContainText("尝试 1 次");
+    expect(errors).toEqual([]);
   } finally {
     await app.close();
   }

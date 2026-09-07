@@ -833,7 +833,15 @@ export class WorkspaceService {
       for (const j of db.list<Job>("jobs", id))
         if (
           j.accountId === accountId &&
-          !["completed", "cancelled"].includes(j.status)
+          ![
+            "completed",
+            "published",
+            "cancelled",
+            "unknown",
+            "accepted",
+            "processing",
+            "submitting",
+          ].includes(j.status)
         ) {
           j.status = "paused";
           db.put("jobs", j);
@@ -1052,8 +1060,15 @@ export class WorkspaceService {
   recordManual(id: string, jobId: string, receipt: Receipt) {
     const { db } = this.context(id, true);
     const job = this.job(id, jobId);
-    if (["completed", "cancelled"].includes(job.status))
+    if (["completed", "published", "cancelled"].includes(job.status))
       throw new AppError("JOB_FINAL", "此任务已经结束");
+    if (
+      job.mode !== "manual_due" &&
+      (!["unknown", "accepted"].includes(job.status) ||
+        (job.execution?.leaseOwner &&
+          Date.parse(job.execution.leaseUntil ?? "") > Date.now()))
+    )
+      throw new AppError("JOB_BUSY", "自动任务仅在待核实时允许人工记录结果");
     if (
       !receipt.recordedBy.trim() ||
       !receipt.result.trim() ||
@@ -1090,7 +1105,16 @@ export class WorkspaceService {
   ) {
     const { db } = this.context(id, true);
     const job = this.job(id, jobId);
-    if (["completed", "cancelled", "partial"].includes(job.status))
+    if (
+      job.mode !== "manual_due" &&
+      (job.execution?.submittedAt ||
+        ["validating", "preparing", "processing"].includes(job.status))
+    )
+      throw new AppError(
+        "JOB_BUSY",
+        "任务已有平台操作，不能重新安排或直接取消，请先核实",
+      );
+    if (["completed", "published", "cancelled", "partial"].includes(job.status))
       throw new AppError("JOB_FINAL", "此任务不能重新安排");
     if (input.scheduledAtUtc) {
       if (!Number.isFinite(Date.parse(input.scheduledAtUtc)))
@@ -1213,8 +1237,13 @@ export class WorkspaceService {
     const workspace = await this.open(destination);
     const ctx = this.context(p.id, true);
     for (const job of ctx.db.list<Job>("jobs", p.id))
-      if (!["completed", "cancelled"].includes(job.status)) {
-        job.status = "paused";
+      if (!["completed", "published", "cancelled"].includes(job.status)) {
+        job.status = job.execution?.submittedAt ? "unknown" : "paused";
+        if (job.execution) {
+          job.execution.restored = true;
+          delete job.execution.leaseOwner;
+          delete job.execution.leaseUntil;
+        }
         ctx.db.put("jobs", job);
       }
     return { ...workspace, jobs: ctx.db.list<Job>("jobs", p.id) };

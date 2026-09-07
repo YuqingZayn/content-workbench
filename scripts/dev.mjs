@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer as createSocketServer, createConnection } from "node:net";
-import { realpathSync } from "node:fs";
+import { realpathSync, mkdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createServer } from "vite";
@@ -52,8 +52,12 @@ try {
   await server.listen();
   server.printUrls();
   const address = server.httpServer.address();
+  const runtimeTemp = path.join(root, ".local", "runtime-temp");
+  mkdirSync(runtimeTemp, { recursive: true });
   const env = {
     ...process.env,
+    TEMP: runtimeTemp,
+    TMP: runtimeTemp,
     WORKBENCH_DEV_URL: `http://127.0.0.1:${address.port}`,
     WORKBENCH_AUTO_CONNECT_CODEX: "1",
   };

@@ -6,7 +6,7 @@ await esbuild({
   platform: "node",
   format: "cjs",
   target: "node22",
-  external: ["electron"],
+  external: ["electron", "sharp"],
   outfile: "dist/main/index.cjs",
   sourcemap: true,
 });

@@ -214,6 +214,17 @@ export const targetSchema = z.object({
 });
 export type Target = z.infer<typeof targetSchema>;
 export type JobStatus =
+  | "validating"
+  | "preparing"
+  | "submitting"
+  | "processing"
+  | "accepted"
+  | "published"
+  | "retry_wait"
+  | "unknown"
+  | "needs_attention"
+  | "failed"
+  | "skipped"
   | "scheduled"
   | "manual_pending"
   | "partial"
@@ -239,7 +250,8 @@ export interface Job {
   accountLabel: string;
   title: string;
   platform: Platform;
-  mode: "manual_due";
+  mode: "manual_due" | "automatic" | "simulation";
+  execution?: import("./automation").Execution;
   scheduledAtUtc: string;
   timezone: string;
   status: JobStatus;

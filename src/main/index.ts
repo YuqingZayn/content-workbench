@@ -8,12 +8,21 @@ import {
   clipboard,
   nativeImage,
   nativeTheme,
+  safeStorage,
+  powerMonitor,
+  Tray,
+  Menu,
 } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createReadStream, statSync } from "node:fs";
 import { Readable } from "node:stream";
 import { readFile } from "node:fs/promises";
+import { PublisherService } from "../services/publishing/service";
+import { ConnectionStore } from "../services/publishing/store";
+import { MockAdapter } from "../services/publishing/mock";
+import { officialAdapters } from "../services/publishing/platforms";
+import { connectionSchema } from "../contracts/automation";
 import { ThumbnailService } from "../services/thumbnails";
 import { z } from "zod";
 import { WorkspaceService } from "../services/workspace";
@@ -46,6 +55,8 @@ let win: BrowserWindow;
 let service: WorkspaceService;
 let codex: CodexService;
 let thumbnails: ThumbnailService;
+let publisher: PublisherService;
+let tray: Tray;
 let closing = false;
 let queue: Promise<unknown> = Promise.resolve();
 const emit = (event: AppEvent) => {
@@ -61,6 +72,11 @@ async function selectDirectory(title: string) {
 }
 async function dispatch(method: string, raw: unknown): Promise<unknown> {
   const data = raw ?? {};
+  if (method === "background.list") return publisher.background();
+  if (method === "app.background") {
+    win.hide();
+    return true;
+  }
   if (method === "app.bootstrap")
     return {
       recent: service.recent(),
@@ -91,8 +107,8 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
     if (!source) return null;
     const destination = await selectDirectory("选择空的恢复文件夹");
     if (!destination) return null;
-    if (codex.active)
-      throw new AppError("PROJECT_BUSY", "请先等待或停止 AI 任务");
+    if (codex.active || publisher.running.size)
+      throw new AppError("PROJECT_BUSY", "请先等待或停止后台任务");
     return service.restore(source, destination);
   }
   if (method === "codex.status") return codex.status;
@@ -161,6 +177,10 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
     return codex.stop(p.projectId, p.runId);
   }
   const { projectId } = pid.parse(data);
+  if (method === "background.stop") {
+    publisher.setManagement(projectId, false);
+    return publisher.background();
+  }
   if (method === "project.load") return service.load(projectId);
   if (method === "platforms.save") {
     const p = platformDetailsSchema
@@ -312,6 +332,59 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
       p.parameters,
     );
   }
+  if (method === "connections.list")
+    return publisher.listConnections(projectId);
+  if (method === "connections.save") {
+    const p = z
+      .object({
+        connection: connectionSchema,
+        secrets: z.object({
+          token: z.string().max(16000).optional(),
+          webhook: z.string().max(4000).optional(),
+          refreshToken: z.string().max(16000).optional(),
+          mediaToken: z.string().max(16000).optional(),
+        }),
+      })
+      .parse(data);
+    return publisher.saveConnection(projectId, p.connection, p.secrets);
+  }
+  if (method === "connections.check" || method === "connections.disconnect") {
+    const { connectionId } = z.object({ connectionId: z.uuid() }).parse(data);
+    return method === "connections.check"
+      ? publisher.checkConnection(projectId, connectionId)
+      : publisher.disconnect(projectId, connectionId);
+  }
+  if (method === "connections.mockTarget") {
+    const { platform } = z.object({ platform: platformIdSchema }).parse(data);
+    const w = service.addAccount(projectId, {
+      platform,
+      label: "模拟账号 · " + Date.now(),
+      externalId: "",
+      accountType: "mock",
+    });
+    const account = w.accounts.at(-1)!;
+    const next = service.addTarget(projectId, {
+      accountId: account.id,
+      label: "本地模拟目标",
+      kind: "channel",
+    });
+    return next;
+  }
+  if (method === "publish.events")
+    return publisher.events(
+      projectId,
+      z.object({ jobId: z.uuid() }).parse(data).jobId,
+    );
+  if (method === "publish.action") {
+    const p = z
+      .object({
+        jobId: z.uuid(),
+        action: z.enum(["reconcile", "retry", "manual", "pause", "cleanup"]),
+      })
+      .parse(data);
+    await publisher.action(projectId, p.jobId, p.action);
+    return service.load(projectId);
+  }
   if (method === "accounts.add") {
     const p = z
       .object({
@@ -347,9 +420,15 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
         targetIds: z.array(z.uuid()),
         scheduledAtUtc: z.string(),
         timezone: z.string(),
+        mode: z
+          .enum(["manual_due", "automatic", "simulation"])
+          .default("manual_due"),
+        approved: z.boolean().default(false),
       })
       .parse(data);
-    return service.schedule(projectId, p);
+    return p.mode === "manual_due"
+      ? service.schedule(projectId, p)
+      : publisher.schedule(projectId, { ...p, mode: p.mode });
   }
   if (method === "publish.export") {
     const p = z.object({ jobId: z.uuid() }).parse(data);
@@ -392,6 +471,27 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
 }
 app.whenReady().then(async () => {
   service = new WorkspaceService(app.getPath("userData"));
+  publisher = new PublisherService(
+    service,
+    new ConnectionStore(path.join(app.getPath("userData"), "publishing"), {
+      encrypt(text) {
+        if (!safeStorage.isEncryptionAvailable())
+          throw new AppError(
+            "ENCRYPTION_UNAVAILABLE",
+            "系统凭据加密不可用，不能保存平台密钥",
+          );
+        return safeStorage.encryptString(text).toString("base64");
+      },
+      decrypt(text) {
+        return safeStorage.decryptString(Buffer.from(text, "base64"));
+      },
+    }),
+    emit,
+    { mock: new MockAdapter(), ...officialAdapters() },
+  );
+  await publisher.reopenManaged();
+  publisher.start();
+  powerMonitor.on("resume", () => void publisher.tick().catch(() => {}));
   codex = new CodexService(service, emit);
   nativeTheme.themeSource = themeSchema
     .catch("light")
@@ -484,6 +584,31 @@ app.whenReady().then(async () => {
     },
   });
   win.setMenuBarVisibility(false);
+  // A local embedded icon keeps the development runtime independent of packaged assets.
+  tray = new Tray(
+    nativeImage.createFromDataURL(
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGklEQVQ4T2Nk+M/wn4ECwESJ5lEDRg0YNWAwGQAAh+Uf8RfJqL8AAAAASUVORK5CYII=",
+    ),
+  );
+  tray.setToolTip("内容工作台 · 后台发布任务");
+  const showWindow = () => {
+    win.show();
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  };
+  tray.on("double-click", showWindow);
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "打开内容工作台", click: showWindow },
+      {
+        label: "退出内容工作台",
+        click: () => {
+          showWindow();
+          win.close();
+        },
+      },
+    ]),
+  );
   const entry =
     process.env.WORKBENCH_DEV_URL ??
     pathToFileURL(path.join(__dirname, "../renderer/index.html")).href;
@@ -552,14 +677,14 @@ app.whenReady().then(async () => {
   });
   win.on("close", (event) => {
     if (closing) return;
-    if (codex.active || codex.queue.length) {
+    if (codex.active || codex.queue.length || publisher.running.size) {
       event.preventDefault();
       void dialog
         .showMessageBox(win, {
           type: "question",
           buttons: ["继续工作", "停止任务并退出"],
           defaultId: 0,
-          message: "Codex 正在生成内容，退出会中断任务。",
+          message: "后台任务正在执行，退出将停止处理并保留状态供恢复。",
         })
         .then((r) => {
           if (r.response === 1) {
@@ -603,6 +728,8 @@ process.on("message", (message: unknown) => {
 app.on("window-all-closed", () => app.quit());
 app.on("before-quit", () => {
   closing = true;
+  publisher?.stop();
+  tray?.destroy();
   codex?.close();
   thumbnails?.close();
   service?.closeAll();

@@ -8,7 +8,7 @@ export class StateDatabase {
     const version = this.db.prepare("PRAGMA user_version").get() as {
       user_version: number;
     };
-    if (version.user_version > 1) {
+    if (version.user_version > 2) {
       this.db.close();
       throw new AppError(
         "SCHEMA_UNSUPPORTED",
@@ -16,11 +16,16 @@ export class StateDatabase {
       );
     }
     if (!readOnly) {
-      this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
+      this.db
+        .exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; BEGIN IMMEDIATE;
     CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,payload TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,payload TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions(content_id TEXT PRIMARY KEY,project_id TEXT NOT NULL,thread_id TEXT NOT NULL);
-    PRAGMA user_version=1;`);
+    CREATE TABLE IF NOT EXISTS publish_events(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,job_id TEXT NOT NULL,payload TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS publish_events_job ON publish_events(project_id,job_id);
+    CREATE TABLE IF NOT EXISTS migrations(version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL);
+    INSERT OR IGNORE INTO migrations VALUES(2,datetime('now'));
+    PRAGMA user_version=2; COMMIT;`);
     }
   }
   list<T extends Job | AiRun>(table: "jobs" | "runs", projectId: string): T[] {

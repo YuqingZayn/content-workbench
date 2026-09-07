@@ -1,6 +1,6 @@
 {
   "name": "content-workbench",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "本地优先的账号项目内容工作台",
   "private": true,
   "type": "module",
@@ -21,7 +21,8 @@
     "verify:first-loop": "tsx scripts/verify-first-loop.ts",
     "test:package": "node scripts/smoke-package.mjs",
     "dist:win": "node scripts/ensure-runtime.mjs && npm run build && node scripts/dist-win.mjs",
-    "start": "electron ."
+    "start": "electron .",
+    "test:publishing": "tsx --test tests/publishing.test.ts tests/publishing-adapters.test.ts"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",
@@ -50,7 +51,7 @@
     "electronDist": "node_modules/electron/dist",
     "productName": "Content Workbench",
     "directories": {
-      "output": "release/0.1.1"
+      "output": "release/0.2.0"
     },
     "files": [
       "dist/**/*",

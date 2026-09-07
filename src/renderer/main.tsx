@@ -73,8 +73,15 @@ import {
   PlatformManager,
   usePlatforms,
 } from "./Platforms";
+import {
+  ConnectionsPanel,
+  BackgroundPanel,
+  JobAutomationActions,
+  publishStatus,
+} from "./Automation";
 const api = window.workbench;
 const statusName: Record<string, string> = {
+  ...publishStatus,
   scheduled: "已排期",
   manual_pending: "待人工发布",
   partial: "部分完成",
@@ -315,7 +322,9 @@ function App() {
     { id: "accounts", label: "账号与定位", icon: Users },
   ];
   const pending =
-    w?.jobs.filter((j) => !["completed", "cancelled"].includes(j.status)) ?? [];
+    w?.jobs.filter(
+      (j) => !["completed", "published", "cancelled"].includes(j.status),
+    ) ?? [];
   const content = w?.contents.find((c) => c.id === contentId);
   const view = (
     <div className={`app ${w ? "" : "welcome-app"}`} aria-busy={busy}>
@@ -402,7 +411,7 @@ function App() {
             <Settings size={18} />
             设置与备份
           </button>
-          <div className="version">v0.1 · 辅助发布</div>
+          <div className="version">v0.2 · DEV</div>
         </div>
       </aside>
       <div className="workspace">
@@ -575,7 +584,11 @@ function App() {
                   <div>
                     <span>已完成发布</span>
                     <strong>
-                      {w.jobs.filter((j) => j.status === "completed").length}
+                      {
+                        w.jobs.filter((j) =>
+                          ["completed", "published"].includes(j.status),
+                        ).length
+                      }
                       <small>项</small>
                     </strong>
                     <CheckCircle2 size={21} />
@@ -1698,6 +1711,10 @@ function ScheduleModal({
 }) {
   const [selected, setSelected] = useState<string[]>([]),
     [date, setDate] = useState(localInput()),
+    [publishMode, setPublishMode] = useState<
+      "manual_due" | "automatic" | "simulation"
+    >("manual_due"),
+    [approved, setApproved] = useState(false),
     [busy, setBusy] = useState(false);
   const accounts = w.accounts.filter(
     (a) => a.platform === variant.platform && a.enabled,
@@ -1707,13 +1724,29 @@ function ScheduleModal({
   );
   return (
     <Modal title="安排辅助发布" onClose={onClose}>
+      <label>
+        发布方式
+        <select
+          aria-label="发布方式"
+          value={publishMode}
+          onChange={(e) => {
+            setPublishMode(e.target.value as typeof publishMode);
+            setApproved(false);
+          }}
+        >
+          <option value="manual_due">人工辅助发布</option>
+          <option value="simulation">本地模拟（专用模拟目标）</option>
+          <option value="automatic">自动发布（已检查连接的目标）</option>
+        </select>
+      </label>
       <div className="snapshot-note">
         <Badge platform={variant.platform} />
         <strong>{variant.title}</strong>
         <small>将固定 r{variant.revision} 的正文与媒体</small>
       </div>
       <label>
-        人工截止时间（本机时区：
+        {publishMode === "manual_due" ? "人工截止时间" : "计划执行时间"}
+        （本机时区：
         {Intl.DateTimeFormat().resolvedOptions().timeZone}）
         <input
           type="datetime-local"
@@ -1723,8 +1756,24 @@ function ScheduleModal({
         />
       </label>
       <p className="hint">
-        记录为 UTC，按项目时区 {w.project.timezone} 展示。到期后由你人工发布。
+        记录为 UTC，按项目时区 {w.project.timezone} 展示。
+        {publishMode === "manual_due"
+          ? "到期后由你人工发布。"
+          : "开发版运行时自动处理；错过 5 分钟需重新安排。"}
       </p>
+      {publishMode !== "manual_due" && (
+        <label className="check-row">
+          <input
+            aria-label="确认自动发布"
+            type="checkbox"
+            checked={approved}
+            onChange={(e) => setApproved(e.target.checked)}
+          />
+          {publishMode === "simulation"
+            ? "确认执行本地模拟，不发送到平台"
+            : "确认在上述时间向所选真实目标发送当前固定内容"}
+        </label>
+      )}
       <label>发布目标</label>
       <div className="target-list">
         {targets.map((t) => (
@@ -1758,11 +1807,17 @@ function ScheduleModal({
         </button>
         <button
           className="primary"
-          disabled={!selected.length || busy}
+          disabled={
+            !selected.length ||
+            busy ||
+            (publishMode !== "manual_due" && !approved)
+          }
           onClick={() => {
             setBusy(true);
             void api
               .call("publish.schedule", {
+                mode: publishMode,
+                approved,
                 projectId: w.project.id,
                 contentId: content.id,
                 variantId: variant.id,
@@ -2563,6 +2618,12 @@ function Accounts({ w, refresh, notice }: Common) {
           平台账号与目标
         </button>
         <button
+          className={tab === "connections" ? "selected" : ""}
+          onClick={() => setTab("connections")}
+        >
+          自动发布连接
+        </button>
+        <button
           className={tab === "profile" ? "selected" : ""}
           onClick={() => setTab("profile")}
         >
@@ -2575,7 +2636,9 @@ function Accounts({ w, refresh, notice }: Common) {
           平台管理
         </button>
       </div>
-      {tab === "platforms" ? (
+      {tab === "connections" ? (
+        <ConnectionsPanel w={w} refresh={refresh} notice={notice} />
+      ) : tab === "platforms" ? (
         <PlatformManager />
       ) : tab === "profile" ? (
         <form
@@ -2673,7 +2736,7 @@ function Accounts({ w, refresh, notice }: Common) {
           <div className="info-banner">
             <Users size={18} />
             <p>
-              可选择内置平台或添加自己的平台。当前使用人工辅助发布，账号登记不代表已获得平台授权。
+              可选择内置平台或添加自己的平台。账号登记不代表平台授权；自动连接请在“自动发布连接”中单独配置。
             </p>
           </div>
           {!w.accounts.length ? (
@@ -2896,8 +2959,8 @@ function Records({ w, refresh, notice }: Common) {
     (j) =>
       filter === "all" ||
       (filter === "completed"
-        ? j.status === "completed"
-        : !["completed", "cancelled"].includes(j.status)),
+        ? ["completed", "published"].includes(j.status)
+        : !["completed", "published", "cancelled"].includes(j.status)),
   );
   return (
     <>
@@ -2907,7 +2970,7 @@ function Records({ w, refresh, notice }: Common) {
           <h1>发布记录</h1>
           <p>每个目标独立留痕，每次完成都有依据。</p>
         </div>
-        <span className="pill">人工辅助发布</span>
+        <span className="pill">辅助 / 自动 / 模拟发布</span>
       </div>
       <div className="toolbar">
         <div className="segmented">
@@ -2941,8 +3004,9 @@ function Records({ w, refresh, notice }: Common) {
                 <div>
                   <Badge platform={j.platform} />
                   <span
-                    className={`state ${j.status === "completed" ? "green" : j.status === "partial" ? "amber" : ""}`}
+                    className={`state ${["completed", "published"].includes(j.status) ? "green" : j.status === "partial" ? "amber" : ""}`}
                   >
+                    {j.mode === "simulation" ? "模拟 · " : ""}
                     {statusName[j.status]}
                   </span>
                   {j.status === "scheduled" &&
@@ -2958,6 +3022,11 @@ function Records({ w, refresh, notice }: Common) {
                   {formatTime(j.scheduledAtUtc, j.timezone)} · 固定快照 ·{" "}
                   {j.segmentCount} 段消息
                 </small>
+                <JobAutomationActions
+                  job={j}
+                  refresh={refresh}
+                  notice={notice}
+                />
                 {j.receipt && (
                   <p className="receipt-note">
                     {j.receipt.recordedBy} · {j.receipt.result} ·{" "}
@@ -2983,24 +3052,26 @@ function Records({ w, refresh, notice }: Common) {
                   <Download size={15} />
                   导出发布包
                 </button>
-                {!["completed", "cancelled"].includes(j.status) && (
-                  <button
-                    className="primary"
-                    onClick={() => {
-                      setSelected(j);
-                      setBy(j.receipt?.recordedBy ?? "");
-                      setDate(localInput());
-                      setResult(j.receipt?.result ?? "已人工发送");
-                      setUrl(j.receipt?.url ?? "");
-                      setSegments(
-                        j.receipt?.completedSegments ??
-                          Array.from({ length: j.segmentCount }, (_, i) => i),
-                      );
-                    }}
-                  >
-                    回填结果
-                  </button>
-                )}
+                {!["completed", "published", "cancelled"].includes(j.status) &&
+                  (j.mode === "manual_due" ||
+                    ["unknown", "accepted"].includes(j.status)) && (
+                    <button
+                      className="primary"
+                      onClick={() => {
+                        setSelected(j);
+                        setBy(j.receipt?.recordedBy ?? "");
+                        setDate(localInput());
+                        setResult(j.receipt?.result ?? "已人工发送");
+                        setUrl(j.receipt?.url ?? "");
+                        setSegments(
+                          j.receipt?.completedSegments ??
+                            Array.from({ length: j.segmentCount }, (_, i) => i),
+                        );
+                      }}
+                    >
+                      回填结果
+                    </button>
+                  )}
               </div>
             </div>
           ))
@@ -3238,8 +3309,11 @@ function Calendar({
               )
               .map((j) => (
                 <button
-                  className={`calendar-job ${j.status === "completed" ? "done" : ""}`}
-                  draggable={!["completed", "partial"].includes(j.status)}
+                  className={`calendar-job ${["completed", "published"].includes(j.status) ? "done" : ""}`}
+                  draggable={
+                    !["completed", "published", "partial"].includes(j.status) &&
+                    !j.execution?.submittedAt
+                  }
                   onDragStart={(e) =>
                     e.dataTransfer.setData("text/plain", j.id)
                   }
@@ -3262,7 +3336,7 @@ function Calendar({
         ))}
       </div>
       <p className="hint">
-        这里的排期是人工截止时间。电脑休眠或关闭后，不会自动补发。
+        人工任务按截止时间提示；自动任务由本机开发服务执行。电脑休眠或关闭后，错过的任务不会集中补发。
       </p>
       {undo && (
         <div className="undo-bar">
@@ -3303,7 +3377,7 @@ function Calendar({
             {statusName[editing.status]}
           </p>
           <div className="modal-actions">
-            {!["completed", "cancelled", "partial"].includes(
+            {!["completed", "published", "cancelled", "partial"].includes(
               editing.status,
             ) && (
               <>
@@ -3420,6 +3494,7 @@ function SettingsPage({
           </label>
         </section>
         <PlatformManager />
+        <BackgroundPanel projectId={w.project.id} notice={notice} />
         <section className="card settings-card">
           <div>
             <Folder size={22} />
@@ -3597,11 +3672,11 @@ function SettingsPage({
           </div>
           <div className="capability-line">
             <span className="dot gray" />
-            自动发帖、云端同步、视频转码尚未启用
+            四个平台图文连接已实现，真实发布待验证；可先用本地模拟验收
           </div>
           <p className="hint">
-            Windows 便携 / 安装版 · v0.1 · 单机单写入者。退出应用会停止 AI
-            任务。
+            v0.2 开发版 · 单机单写入者。完全退出应用会停止 AI
+            与本地排期；托盘运行可继续处理。云端同步与视频转码尚未启用。
           </p>
         </section>
       </div>

@@ -22,6 +22,7 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run test:integration
+      - run: npm run test:publishing
       - run: npm run test:media
       - run: npm run test:e2e
       - run: npm run dist:win
