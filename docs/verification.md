@@ -17,7 +17,7 @@
 - 真实桌面完整演练：官号导入媒体，保存身份，登记账号和两个群，建立 X 英文 / Instagram 英文 / 小红书中文 / 微信中文四版本，调整媒体顺序和封面，标记就绪、两个群独立排期、导出并回填其中一个；创始人另导入三张图和一个视频。退出重开后正文、媒体 ID 与顺序、逐群状态一致，渲染错误为 0。
 - Windows NSIS 安装版和 portable 便携版已成功生成，文件各约 115 MB；构建未配置签名证书。
 - 打包产物 `win-unpacked/Content Workbench.exe` 已实际启动，确认 `app.isPackaged=true`、Electron 44.2.0、Node 24.20.0、contextIsolation 开启、nodeIntegration 关闭，欢迎页可用。
-- 2 GiB + 64 字节稀疏媒体夹具完成注册与哈希，读取超过 2 GiB 的指定区间返回正确 206、Content-Range 与 32 字节；主进程 RSS 增长约 26 MiB，没有整文件载入。此测试验证大文件流，不冒称播放了 2 GiB 的真实长视频。
+- 2 GiB + 64 字节稀疏媒体夹具完成注册与哈希，读取超过 2 GiB 的指定区间返回正确 206、Content-Range 与 32 字节；最近一次本地验收的主进程 RSS 增长约 40 MiB，没有整文件载入。此测试验证大文件流，不冒称播放了 2 GiB 的真实长视频。
 - 便携自解压程序在项目盘临时目录中启动，欢迎页与 preload IPC 均通过。当前机器系统盘空间不足以可靠完成自解压，推荐直接运行已解压应用，或安装时选择空间充足的磁盘。
 - 共 5 项业务测试、7 项集成测试、2 条桌面测试通过。版本草稿与人工回填均为演示数据，未发生真实平台发送。
 - 真实 Codex 总计 7 轮：两个身份各两轮微信草稿，加上带三张演示图片上下文的 X 英文、Instagram 英文、小红书中文草稿。跨进程恢复了官号主题 thread；所有提案正确保存，未知素材与并发编辑通过单独事件模拟校验。
@@ -39,7 +39,7 @@ npm run verify:codex # 显式联网生成，会使用当前 Codex 额度
 npm run dist:win
 ```
 
-验收夹具 `tests/fixtures/` 是纯色图片与 FFmpeg testsrc2 / sine 自生成四秒 H.264/AAC MP4。`verify:codex` 使用单独 `.local/codex-verification/` 项目，不修改全局 Codex 配置。截图、真实运行日志、应用用户数据、构建产物默认不提交仓库。
+验收夹具 `tests/fixtures/` 是纯色图片与 FFmpeg testsrc2 / sine 自生成四秒 H.264/AAC MP4。`verify:codex` 使用单独 `.local/codex-verification/` 项目，不修改全局 Codex 配置。三张演示截图与最小脱敏事件样本随文档提交；完整运行日志、应用用户数据、构建产物默认不提交仓库。GitHub Actions 只运行检查、构建和保存工作流附件，不自动发布 Release。
 
 ## 已知修复
 
