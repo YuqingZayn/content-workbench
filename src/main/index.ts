@@ -40,7 +40,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 if (process.env.WORKBENCH_USER_DATA)
   app.setPath("userData", process.env.WORKBENCH_USER_DATA);
-if (!app.requestSingleInstanceLock()) app.quit();
+if (!app.requestSingleInstanceLock()) app.exit(0);
 nativeTheme.themeSource = "light";
 let win: BrowserWindow;
 let service: WorkspaceService;
@@ -556,6 +556,7 @@ app.whenReady().then(async () => {
     }
   });
   await win.loadURL(entry);
+  win.show();
   if (
     process.env.WORKBENCH_DEV_URL &&
     process.env.WORKBENCH_AUTO_CONNECT_CODEX === "1"
@@ -568,6 +569,19 @@ app.whenReady().then(async () => {
 });
 app.on("second-instance", () => {
   if (win) {
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  }
+});
+process.on("message", (message: unknown) => {
+  if (
+    process.env.WORKBENCH_DEV_URL &&
+    (message as { type?: string } | null)?.type === "workbench:focus" &&
+    win &&
+    !win.isDestroyed()
+  ) {
+    if (win.isMinimized()) win.restore();
     win.show();
     win.focus();
   }
