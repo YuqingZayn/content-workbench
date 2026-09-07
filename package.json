@@ -18,7 +18,7 @@
     "verify:codex": "tsx scripts/verify-codex.ts",
     "verify:first-loop": "tsx scripts/verify-first-loop.ts",
     "test:package": "node scripts/smoke-package.mjs",
-    "dist:win": "npm run build && electron-builder --win nsis portable --x64",
+    "dist:win": "node scripts/ensure-runtime.mjs && npm run build && electron-builder --win nsis portable --x64",
     "start": "electron ."
   },
   "dependencies": {
@@ -44,6 +44,7 @@
   },
   "build": {
     "appId": "com.yuqingzayn.contentworkbench",
+    "electronDist": "node_modules/electron/dist",
     "productName": "Content Workbench",
     "directories": {
       "output": "release"
