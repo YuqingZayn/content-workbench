@@ -1797,11 +1797,49 @@ function Assistant({
 }) {
   const [prompt, setPrompt] = useState(""),
     [mode, setMode] = useState<"task" | "draft">("task"),
-    [model, setModel] = useState(""),
+    [model, setModel] = useState(
+      () => localStorage.getItem("codex-model") ?? "",
+    ),
+    [effort, setEffort] = useState(
+      () => localStorage.getItem("codex-effort") ?? "",
+    ),
     [variantId, setVariantId] = useState(content.variants[0]?.id ?? ""),
     [live, setLive] = useState(""),
     [activity, setActivity] = useState(""),
     [busy, setBusy] = useState(false);
+  const selectedModel = codex.models.find(
+    (m) => m.id === (model || codex.defaultModel),
+  );
+  const effortOptions = selectedModel?.supportedReasoningEfforts ?? [];
+  const validEffort = effortOptions.some((e) => e.reasoningEffort === effort)
+    ? effort
+    : "";
+  const defaultEffort = effortOptions.some(
+    (e) => e.reasoningEffort === codex.defaultReasoningEffort,
+  )
+    ? codex.defaultReasoningEffort
+    : selectedModel?.defaultReasoningEffort;
+  const effortLabels: Record<string, string> = {
+    none: "无",
+    minimal: "最低",
+    low: "低",
+    medium: "中等",
+    high: "高",
+    xhigh: "超高",
+    max: "最大",
+    ultra: "极高",
+  };
+  useEffect(() => {
+    if (codex.state !== "ready") return;
+    if (model && !codex.models.some((m) => m.id === model)) {
+      setModel("");
+      return;
+    }
+    localStorage.setItem("codex-model", model);
+    localStorage.setItem("codex-effort", validEffort);
+    if (codex.state === "ready" && effort !== validEffort)
+      setEffort(validEffort);
+  }, [model, effort, validEffort, codex.state, codex.models]);
   const runs = w.runs.filter((r) => r.contentId === content.id),
     active = runs.find((r) =>
       ["running", "queued", "stopping"].includes(r.status),
@@ -1850,6 +1888,7 @@ function Assistant({
         mode,
         prompt,
         model: model || undefined,
+        reasoningEffort: validEffort || undefined,
       });
       setPrompt("");
       await refresh();
@@ -1930,6 +1969,12 @@ function Assistant({
                 <Sparkles size={14} />
                 <strong>Codex</strong>
                 <span>{statusName[run.status] ?? run.status}</span>
+                {run.reasoningEffort && (
+                  <small>
+                    思考：
+                    {effortLabels[run.reasoningEffort] ?? run.reasoningEffort}
+                  </small>
+                )}
               </div>
               <pre>
                 {active?.id === run.id && live
@@ -1985,6 +2030,32 @@ function Assistant({
               <option key={v.id} value={v.id}>
                 {getPlatformDefinition(w.platforms, v.platform).name} ·{" "}
                 {v.locale}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          思考强度
+          <select
+            aria-label="Codex 思考强度"
+            value={validEffort}
+            disabled={!!active || !effortOptions.length}
+            onChange={(e) => setEffort(e.target.value)}
+          >
+            <option value="">
+              默认
+              {defaultEffort
+                ? " · " + (effortLabels[defaultEffort] ?? defaultEffort)
+                : "（连接后读取）"}
+            </option>
+            {effortOptions.map((e) => (
+              <option
+                key={e.reasoningEffort}
+                value={e.reasoningEffort}
+                title={e.description}
+              >
+                {effortLabels[e.reasoningEffort] ?? e.reasoningEffort} ·{" "}
+                {e.reasoningEffort}
               </option>
             ))}
           </select>

@@ -138,6 +138,7 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
           mode: z.enum(["draft", "task"]).optional(),
           prompt: z.string().min(1).max(20000),
           model: z.string().optional(),
+          reasoningEffort: z.string().min(1).max(40).optional(),
         })
         .parse(data),
     );

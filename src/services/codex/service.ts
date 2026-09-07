@@ -106,9 +106,10 @@ export class CodexService {
         this.emit({ type: "codex-status" });
       });
       await c.connect(findCodex(configured));
-      const [account, models] = await Promise.all([
+      const [account, models, config] = await Promise.all([
         c.request("account/read", { refreshToken: false }),
         c.request("model/list", { includeHidden: false }),
+        c.request("config/read", { includeLayers: false }),
       ]);
       if (!account.account)
         throw new AppError(
@@ -119,9 +120,16 @@ export class CodexService {
         state: "ready",
         message: "本机 Codex 已连接",
         version: c.version,
+        defaultModel:
+          config.config.model ??
+          models.data.find((m: any) => m.isDefault)?.model,
+        defaultReasoningEffort:
+          config.config.model_reasoning_effort ?? undefined,
         models: models.data.map((m: any) => ({
           id: m.model,
           label: m.displayName || m.model,
+          supportedReasoningEfforts: m.supportedReasoningEfforts,
+          defaultReasoningEffort: m.defaultReasoningEffort,
         })),
       };
     } catch (e) {
@@ -142,6 +150,7 @@ export class CodexService {
     mode?: "draft" | "task";
     prompt: string;
     model?: string;
+    reasoningEffort?: string;
   }) {
     const { project } = this.workspace.context(input.projectId, true);
     if (this.status.state !== "ready")
@@ -153,12 +162,31 @@ export class CodexService {
       throw new AppError("VARIANT_UNKNOWN", "请先选择一个平台版本");
     if (!input.prompt.trim())
       throw new AppError("PROMPT_REQUIRED", "请输入任务要求");
+    const model = input.model || this.status.defaultModel;
+    const modelInfo = this.status.models.find((m) => m.id === model);
+    const supported = modelInfo?.supportedReasoningEfforts;
+    const configuredEffort = this.status.defaultReasoningEffort;
+    const reasoningEffort =
+      input.reasoningEffort ||
+      (supported?.some((e) => e.reasoningEffort === configuredEffort)
+        ? configuredEffort
+        : modelInfo?.defaultReasoningEffort);
+    if (
+      input.reasoningEffort &&
+      !supported?.some((e) => e.reasoningEffort === input.reasoningEffort)
+    )
+      throw new AppError(
+        "CODEX_EFFORT_UNSUPPORTED",
+        "所选模型不支持此思考强度，请重新选择",
+      );
     const run: AiRun = {
       id: uuid(),
       projectId: project.id,
       contentId: content.id,
       variantId: v?.id,
       mode,
+      model,
+      reasoningEffort,
       baseRevision: v?.revision ?? 0,
       status: "queued",
       prompt: input.prompt,
@@ -196,7 +224,8 @@ export class CodexService {
       allowedAssets: w.assets
         .filter((a) => v?.assetIds.includes(a.id) || v?.coverId === a.id)
         .map((a) => ({ id: a.id, name: a.name, kind: a.kind })),
-      model: input.model,
+      model,
+      reasoningEffort,
       baseHash: v ? hash(v.body) : undefined,
     };
     writeJson(
@@ -245,6 +274,7 @@ export class CodexService {
         cwd: project.root,
         ...fullAccessThread,
         model: context.model || undefined,
+        config: { model_reasoning_effort: context.reasoningEffort ?? null },
         developerInstructions:
           fullAccessInstructions +
           (run.mode === "task"
@@ -284,6 +314,7 @@ export class CodexService {
         threadId: threadId!,
         input,
         ...fullAccessTurn,
+        effort: context.reasoningEffort ?? null,
         model: context.model || undefined,
         ...(run.mode === "task" ? {} : { outputSchema }),
       };

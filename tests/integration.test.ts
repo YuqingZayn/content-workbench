@@ -54,7 +54,21 @@ test("Full Access applies on start and resume; task output never overwrites a dr
     state: "ready",
     message: "test simulation",
     version: "test",
-    models: [],
+    defaultModel: "test-model",
+    defaultReasoningEffort: "medium",
+    models: [
+      {
+        id: "test-model",
+        label: "Test",
+        defaultReasoningEffort: "low",
+        supportedReasoningEfforts: ["low", "medium", "high"].map(
+          (reasoningEffort) => ({
+            reasoningEffort,
+            description: reasoningEffort,
+          }),
+        ),
+      },
+    ],
   };
   const finish = async (run: AiRun, output: string) => {
     // drain awaits an RPC before assigning the turn ID.
@@ -76,10 +90,25 @@ test("Full Access applies on start and resume; task output never overwrites a dr
       contentId: content.id,
       mode: "task",
       prompt: "修改文件",
+      reasoningEffort: "high",
     });
     await finish(first, "已完成指定文件修改。");
     assert.equal(first.status, "completed");
     assert.equal(first.access, "full-access");
+    assert.equal(first.reasoningEffort, "high");
+    assert.equal(requests[0].params.config.model_reasoning_effort, "high");
+    assert.equal(requests[1].params.effort, "high");
+    assert.throws(
+      () =>
+        service.start({
+          projectId: w.project.id,
+          contentId: content.id,
+          mode: "task",
+          prompt: "invalid",
+          reasoningEffort: "ultra",
+        }),
+      { code: "CODEX_EFFORT_UNSUPPORTED" },
+    );
     assert.equal(
       workspace.getContent(w.project.id, content.id).variants.length,
       0,
@@ -101,6 +130,9 @@ test("Full Access applies on start and resume; task output never overwrites a dr
     assert.equal(requests[2].method, "thread/resume");
     assert.equal(requests[2].params.sandbox, "danger-full-access");
     assert.equal(second.threadId, first.threadId);
+    assert.equal(second.reasoningEffort, "medium");
+    assert.equal(requests[2].params.config.model_reasoning_effort, "medium");
+    assert.equal(requests[3].params.effort, "medium");
     const params = { threadId: second.threadId, turnId: second.turnId };
     await service.onNotification({
       id: 1,

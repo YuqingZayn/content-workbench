@@ -254,6 +254,8 @@ export interface AiRun {
   variantId?: string;
   mode?: "draft" | "task";
   access?: "full-access";
+  model?: string;
+  reasoningEffort?: string;
   baseRevision: number;
   threadId?: string;
   turnId?: string;
@@ -278,7 +280,17 @@ export interface CodexStatus {
   state: "disconnected" | "connecting" | "ready" | "error";
   message: string;
   version: string;
-  models: { id: string; label: string }[];
+  defaultModel?: string;
+  defaultReasoningEffort?: string;
+  models: {
+    id: string;
+    label: string;
+    supportedReasoningEfforts?: {
+      reasoningEffort: string;
+      description: string;
+    }[];
+    defaultReasoningEffort?: string;
+  }[];
   activeRunId?: string;
 }
 export interface AppEvent {
