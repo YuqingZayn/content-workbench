@@ -22,6 +22,7 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run test:integration
+      - run: npm run test:media
       - run: npm run test:e2e
       - run: npm run dist:win
         env:
@@ -30,7 +31,7 @@ jobs:
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: windows-build
-          path: release/*.exe
+          path: release/*/*.exe
       - uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:

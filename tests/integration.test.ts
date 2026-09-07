@@ -27,6 +27,40 @@ const image = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1foAAAAASUVORK5CYII=",
   "base64",
 );
+
+test("reopening an indexed folder skips reading unchanged media and still imports changed files", async () => {
+  const { root, workspace, w } = await setup();
+  try {
+    const file = path.join(root, "registered.png");
+    writeFileSync(file, image);
+    await workspace.importAssets(w.project.id, [root], "reference");
+    const progress: string[] = [];
+    const result = await workspace.importAssets(
+      w.project.id,
+      [root],
+      "reference",
+      (message) => progress.push(message),
+    );
+    assert.equal(
+      result.find((item) => item.name === "registered.png")?.status,
+      "reused",
+    );
+    assert.deepEqual(progress, []);
+    writeFileSync(
+      file,
+      Buffer.concat([image, Buffer.from("new pixels marker")]),
+    );
+    const changed = await workspace.importAssets(
+      w.project.id,
+      [file],
+      "reference",
+    );
+    assert.equal(changed[0].status, "imported");
+    assert.equal(workspace.load(w.project.id).assets.length, 2);
+  } finally {
+    workspace.closeAll();
+  }
+});
 async function setup() {
   const base = mkdtempSync(path.join(os.tmpdir(), "workbench-integration-"));
   const root = path.join(base, "中文 官号");

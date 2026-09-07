@@ -6,6 +6,7 @@
 - React / React DOM：MIT。
 - Zod：MIT。
 - Lucide 图标：ISC。
+- Sharp 0.35.4：Apache-2.0；其原生包随附 libvips 及其他组件的许可声明，分发时保留依赖内 LICENSE。libvips 源码与许可见 [libvips/libvips](https://github.com/libvips/libvips)。
 - TypeScript、Playwright：Apache-2.0；Vite、esbuild 等构建工具分别遵循包内声明。
 - `src/services/codex/generated/` 由已安装 Codex CLI 0.153.3 的 `app-server generate-ts` 生成，用于协议类型约束，未包含登录信息或用户会话。
 - SQLite 使用 Node 内置 `node:sqlite`，避免额外原生模块 ABI 安装。Node 22.18 会显示实验性 API 提示，运行目标 Electron 已实测后在验收文档记录。

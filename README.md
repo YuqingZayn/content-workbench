@@ -8,7 +8,7 @@ Electron 44 + React 19 + TypeScript + SQLite。业务项目是普通文件夹，
 
 ### 已有本次本地交付文件（推荐）
 
-打开本次交付目录，双击上一级的 `启动内容工作台.cmd`。也可以直接双击本仓库目录下的 `release/win-unpacked/Content Workbench.exe`。
+打开本次交付目录，双击上一级的 `启动内容工作台.cmd`。也可以直接双击本仓库目录下的 `release/0.1.1/win-unpacked/Content Workbench.exe`。升级前请先保存并关闭已经打开的旧版本。
 
 **这会直接打开桌面软件，无需安装 Node.js 或运行 npm 命令。** 请保留完整的 `win-unpacked` 文件夹，不能只复制其中的 `.exe`。启动脚本和演示项目属于本地交付文件，不包含在 GitHub 源码下载包中。
 
@@ -16,11 +16,11 @@ Electron 44 + React 19 + TypeScript + SQLite。业务项目是普通文件夹，
 
 | 文件 | 启动方法 |
 |---|---|
-| `Content-Workbench-Setup-0.1.0-x64.exe` | 双击安装，选择安装目录；完成后通过快捷方式打开 Content Workbench |
-| `Content-Workbench-Portable-0.1.0-x64.exe` | 双击后等待解压和窗口出现；需要临时目录有足够空间 |
+| `Content-Workbench-Setup-0.1.1-x64.exe` | 双击安装，选择安装目录；完成后通过快捷方式打开 Content Workbench |
+| `Content-Workbench-Portable-0.1.1-x64.exe` | 双击后等待解压和窗口出现；需要临时目录有足够空间 |
 | `win-unpacked/Content Workbench.exe` | 直接双击；整个 `win-unpacked` 文件夹必须保持完整 |
 
-本地产物位于 `release/`。仓库管理源码，源码 ZIP 不含现成的安装包；可在成功的 [Desktop checks 工作流](https://github.com/YuqingZayn/content-workbench/actions) 中查看构建附件，或按下文自行构建。
+本版本产物位于 `release/0.1.1/`。仓库管理源码，源码 ZIP 不含现成的安装包；可在成功的 [Desktop checks 工作流](https://github.com/YuqingZayn/content-workbench/actions) 中查看构建附件，或按下文自行构建。
 
 本次构建未配置代码签名证书。如果便携版因临时目录空间不足无法启动，可运行已解压应用，或将安装版安装到空间充足的磁盘。
 
@@ -79,6 +79,7 @@ npm run dist:win
 ## 文档
 
 - [使用指南](docs/user-guide.md)
+- [0.1.1 图片加载优化与 GitHub 参考](docs/image-performance.md)
 - [实现与验证记录](docs/verification.md)
 - [实际平台能力](docs/platform-capabilities.md)
 - [架构与数据边界](docs/architecture.md)

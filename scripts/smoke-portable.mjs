@@ -1,14 +1,22 @@
 import { chromium } from "@playwright/test";
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  writeFileSync,
+  mkdirSync,
+  readFileSync,
+  copyFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
 const listener = createServer();
 await new Promise((resolve) => listener.listen(0, "127.0.0.1", resolve));
 const port = listener.address().port;
 await new Promise((resolve) => listener.close(resolve));
+const configuration = JSON.parse(readFileSync("package.json", "utf8"));
 const executable = path.resolve(
-  "release/Content-Workbench-Portable-0.1.0-x64.exe",
+  configuration.build.directories.output,
+  `Content-Workbench-Portable-${configuration.version}-x64.exe`,
 );
 const portableTemp = path.resolve(".local/portable-runtime");
 mkdirSync(portableTemp, { recursive: true });
@@ -53,6 +61,23 @@ try {
   );
   if (!Array.isArray(bootstrap.recent))
     throw new Error("Portable preload IPC unavailable");
+  const project = mkdtempSync(path.join(portableTemp, "project-"));
+  copyFileSync("tests/fixtures/demo-1.png", path.join(project, "image.png"));
+  const workspace = await page.evaluate(
+    (root) => window.workbench.call("project.open", { path: root }),
+    project,
+  );
+  await page.evaluate(
+    ({ projectId, assetId }) =>
+      new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(true);
+        image.onerror = () =>
+          reject(new Error("Portable thumbnail worker unavailable"));
+        image.src = `media://thumbnail/${projectId}/${assetId}`;
+      }),
+    { projectId: workspace.project.id, assetId: workspace.assets[0].id },
+  );
   await page.screenshot({ path: ".local/e2e-evidence/portable-welcome.png" });
   writeFileSync(
     ".local/e2e-evidence/portable-smoke.json",
@@ -62,6 +87,7 @@ try {
         selfExtractingPortable: true,
         rendererReady: true,
         preloadIpc: true,
+        thumbnailWorkerReady: true,
       },
       null,
       2,

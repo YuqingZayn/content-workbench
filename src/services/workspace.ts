@@ -487,6 +487,19 @@ export class WorkspaceService {
     let assets = this.list(id, "assets", assetSchema);
     const result: { name: string; status: string; message?: string }[] = [];
     const files: string[] = [];
+    // Reopening an indexed project must not reread every large source file.
+    const registeredPaths = new Map(
+      assets.map((asset) => [
+        path
+          .resolve(
+            asset.storageMode === "copy"
+              ? path.join(project.root, asset.path)
+              : asset.path,
+          )
+          .toLowerCase(),
+        asset,
+      ]),
+    );
     const walk = (p: string) => {
       if (files.length >= 10000)
         throw new AppError("IMPORT_LIMIT", "单次最多导入 10000 个文件");
@@ -507,6 +520,17 @@ export class WorkspaceService {
     for (const file of files) {
       let temp: string | undefined;
       try {
+        const known = registeredPaths.get(path.resolve(file).toLowerCase());
+        if (known) {
+          const info = await stat(file);
+          const unchanged =
+            info.size === known.bytes &&
+            Math.abs(info.mtimeMs - known.modifiedMs) <= 2;
+          if (unchanged) {
+            result.push({ name: path.basename(file), status: "reused" });
+            continue;
+          }
+        }
         onProgress?.(`正在索引 ${path.basename(file)}`);
         const handle = await open(file, "r");
         const b = Buffer.alloc(32);

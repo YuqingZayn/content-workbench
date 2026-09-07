@@ -12,6 +12,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createReadStream, statSync } from "node:fs";
 import { Readable } from "node:stream";
+import { readFile } from "node:fs/promises";
+import { ThumbnailService } from "../services/thumbnails";
 import { z } from "zod";
 import { WorkspaceService } from "../services/workspace";
 import { CodexService } from "../services/codex/service";
@@ -35,6 +37,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 let win: BrowserWindow;
 let service: WorkspaceService;
 let codex: CodexService;
+let thumbnails: ThumbnailService;
 let closing = false;
 let queue: Promise<unknown> = Promise.resolve();
 const emit = (event: AppEvent) => {
@@ -347,15 +350,46 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
 app.whenReady().then(async () => {
   service = new WorkspaceService(app.getPath("userData"));
   codex = new CodexService(service, emit);
-  protocol.handle("media", (request) => {
+  thumbnails = new ThumbnailService(
+    path.join(app.getPath("userData"), "cache", "previews-v1"),
+    path.join(__dirname, "thumbnail-worker.cjs"),
+  );
+  protocol.handle("media", async (request) => {
     try {
       if (!["GET", "HEAD"].includes(request.method))
         return new Response(null, { status: 405 });
       const url = new URL(request.url);
       const ids = url.pathname.split("/").filter(Boolean);
-      if (url.hostname !== "asset" || ids.length !== 2)
+      if (
+        !["asset", "thumbnail", "preview"].includes(url.hostname) ||
+        ids.length !== 2
+      )
         return new Response(null, { status: 404 });
       const { file, asset } = service.mediaPath(ids[0], ids[1]);
+      if (url.hostname !== "asset") {
+        const result = await thumbnails.get(
+          file,
+          asset,
+          url.hostname === "preview" ? 1600 : 512,
+          request.signal,
+        );
+        const headers = {
+          "Content-Type": "image/webp",
+          "Cache-Control": "private, no-cache",
+          ETag: result.etag,
+          "Access-Control-Allow-Origin": "*",
+          "X-Preview-Cache": result.cached ? "hit" : "generated",
+        };
+        if (request.headers.get("if-none-match") === result.etag)
+          return new Response(null, { status: 304, headers });
+        const body = await readFile(result.file);
+        return new Response(
+          request.method === "HEAD" ? null : new Uint8Array(body),
+          {
+            headers: { ...headers, "Content-Length": String(body.length) },
+          },
+        );
+      }
       const size = statSync(file).size;
       let range;
       try {
@@ -501,5 +535,6 @@ app.on("window-all-closed", () => app.quit());
 app.on("before-quit", () => {
   closing = true;
   codex?.close();
+  thumbnails?.close();
   service?.closeAll();
 });

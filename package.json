@@ -1,6 +1,6 @@
 {
   "name": "content-workbench",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "本地优先的账号项目内容工作台",
   "private": true,
   "type": "module",
@@ -14,6 +14,7 @@
     "lint": "eslint src tests scripts --ignore-pattern src/services/codex/generated",
     "test": "tsx --test tests/domain.test.ts",
     "test:integration": "tsx --test tests/integration.test.ts",
+    "test:media": "npm run build && tsx --test tests/thumbnails.test.ts",
     "test:e2e": "npm run build && playwright test",
     "verify:codex": "tsx scripts/verify-codex.ts",
     "verify:first-loop": "tsx scripts/verify-first-loop.ts",
@@ -25,6 +26,7 @@
     "lucide-react": "^0.577.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "0.35.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -47,7 +49,7 @@
     "electronDist": "node_modules/electron/dist",
     "productName": "Content Workbench",
     "directories": {
-      "output": "release"
+      "output": "release/0.1.1"
     },
     "files": [
       "dist/**/*",

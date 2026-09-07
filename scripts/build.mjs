@@ -11,6 +11,15 @@ await esbuild({
   sourcemap: true,
 });
 await esbuild({
+  entryPoints: ["src/services/thumbnail-worker.ts"],
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node22",
+  external: ["sharp"],
+  outfile: "dist/main/thumbnail-worker.cjs",
+});
+await esbuild({
   entryPoints: ["src/preload/index.ts"],
   bundle: true,
   platform: "node",

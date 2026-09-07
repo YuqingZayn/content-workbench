@@ -52,6 +52,7 @@ import {
   type Target,
 } from "../contracts/model";
 import "./style.css";
+import { AssetPreview, previewUrl } from "./AssetPreview";
 const api = window.workbench;
 const platformColor: Record<Platform, string> = {
   x: "#242629",
@@ -803,7 +804,7 @@ function ContentRow({
     <button className="content-row" onClick={onOpen}>
       <div className="content-thumb">
         {a?.kind === "image" ? (
-          <img src={mediaUrl(w.project.id, a)} alt="" loading="lazy" />
+          <AssetPreview projectId={w.project.id} asset={a} />
         ) : (
           <Files size={22} />
         )}
@@ -1108,7 +1109,11 @@ function Editor({
                   <div className="binding" key={a.id}>
                     <div className="binding-thumb">
                       {a.kind === "image" ? (
-                        <img src={mediaUrl(w.project.id, a)} alt={a.name} />
+                        <AssetPreview
+                          projectId={w.project.id}
+                          asset={a}
+                          alt={a.name}
+                        />
                       ) : (
                         <Play size={18} />
                       )}
@@ -1328,16 +1333,17 @@ function Editor({
                 {bindings.length > 0 && (
                   <div className="preview-media">
                     {bindings[0].kind === "image" ? (
-                      <img
+                      <AssetPreview
+                        projectId={w.project.id}
+                        asset={bindings[0]}
                         alt="内容预览"
-                        src={mediaUrl(w.project.id, bindings[0])}
                       />
                     ) : (
                       <video
                         src={mediaUrl(w.project.id, bindings[0])}
                         poster={
                           w.assets.find((a) => a.id === draft.coverId)
-                            ? mediaUrl(
+                            ? previewUrl(
                                 w.project.id,
                                 w.assets.find((a) => a.id === draft.coverId)!,
                               )
@@ -1487,10 +1493,10 @@ function Editor({
                   }
                 >
                   {a.kind === "image" ? (
-                    <img
-                      src={mediaUrl(w.project.id, a)}
+                    <AssetPreview
+                      projectId={w.project.id}
+                      asset={a}
                       alt={a.name}
-                      loading="lazy"
                     />
                   ) : (
                     <div className="video-tile">
@@ -1967,6 +1973,7 @@ function Assets({
     [filter, setFilter] = useState("all"),
     [query, setQuery] = useState(""),
     [selected, setSelected] = useState<Asset | null>(null),
+    [original, setOriginal] = useState(false),
     [page, setPage] = useState(0),
     [error, setError] = useState(""),
     [crop, setCrop] = useState(false),
@@ -2122,6 +2129,7 @@ function Assets({
               className="asset-card"
               onClick={() => {
                 setSelected(a);
+                setOriginal(false);
                 setError("");
                 setCrop(false);
               }}
@@ -2135,10 +2143,10 @@ function Assets({
                     </small>
                   </div>
                 ) : a.kind === "image" ? (
-                  <img
-                    src={mediaUrl(w.project.id, a)}
+                  <AssetPreview
+                    projectId={w.project.id}
+                    asset={a}
                     alt={a.name}
-                    loading="lazy"
                   />
                 ) : (
                   <div className="video-tile">
@@ -2190,10 +2198,18 @@ function Assets({
       {selected && (
         <Modal wide title={selected.name} onClose={() => setSelected(null)}>
           <div className="media-viewer">
-            {selected.kind === "image" ? (
+            {selected.kind === "image" && !original ? (
+              <AssetPreview
+                projectId={w.project.id}
+                asset={selected}
+                alt={selected.name}
+                detail
+              />
+            ) : selected.kind === "image" ? (
               <img
                 src={mediaUrl(w.project.id, selected)}
                 alt={selected.name}
+                decoding="async"
                 onError={() => setError("图片无法解码或源文件已丢失")}
               />
             ) : (
@@ -2220,6 +2236,15 @@ function Assets({
             </span>
           </div>
           <div className="button-row">
+            {selected.kind === "image" && (
+              <button
+                className="secondary"
+                onClick={() => setOriginal(!original)}
+              >
+                <ImageIcon size={16} />
+                {original ? "返回快速预览" : "查看原图"}
+              </button>
+            )}
             {selected.kind === "video" ? (
               <button className="secondary" onClick={() => void frame()}>
                 <Camera size={16} />

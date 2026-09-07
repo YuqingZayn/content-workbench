@@ -1,8 +1,19 @@
 import { _electron as electron } from "@playwright/test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  writeFileSync,
+  readFileSync,
+  copyFileSync,
+} from "node:fs";
 import path from "node:path";
+const configuration = JSON.parse(readFileSync("package.json", "utf8"));
 const executablePath = path.resolve(
-  process.argv[2] || "release/win-unpacked/Content Workbench.exe",
+  process.argv[2] ||
+    path.join(
+      configuration.build.directories.output,
+      "win-unpacked/Content Workbench.exe",
+    ),
 );
 const temporary = path.resolve(".local/package-smoke-runtime");
 mkdirSync(temporary, { recursive: true });
@@ -23,6 +34,29 @@ const app = await electron.launch({
 try {
   const page = await app.firstWindow();
   await page.waitForSelector(".welcome");
+  const project = mkdtempSync(path.join(temporary, "project-"));
+  copyFileSync("tests/fixtures/demo-1.png", path.join(project, "image.png"));
+  const workspace = await page.evaluate(
+    (root) => window.workbench.call("project.open", { path: root }),
+    project,
+  );
+  const preview = await app.evaluate(
+    async ({ net }, { projectId, assetId }) => {
+      const response = await net.fetch(
+        `media://thumbnail/${projectId}/${assetId}`,
+      );
+      return {
+        status: response.status,
+        type: response.headers.get("content-type"),
+        bytes: (await response.arrayBuffer()).byteLength,
+      };
+    },
+    { projectId: workspace.project.id, assetId: workspace.assets[0].id },
+  );
+  if (preview.status !== 200 || preview.type !== "image/webp" || !preview.bytes)
+    throw new Error(
+      "Packaged thumbnail worker or native Sharp runtime unavailable",
+    );
   const result = await app.evaluate(({ app, BrowserWindow }) => ({
     packaged: app.isPackaged,
     name: app.getName(),
@@ -55,6 +89,7 @@ try {
       node: result.node,
       electron: result.electron,
       rendererReady: true,
+      thumbnailWorkerReady: true,
     }),
   );
 } finally {

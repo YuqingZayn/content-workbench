@@ -546,6 +546,59 @@ a {
   height: 100%;
   object-fit: cover;
 }
+.asset-preview {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 24px;
+  overflow: hidden;
+  background: var(--hover);
+}
+.asset-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+.asset-preview.loaded img {
+  opacity: 1;
+}
+.preview-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  background: var(--hover);
+}
+.preview-placeholder small {
+  font-size: 10px;
+}
+.preview-media .asset-preview {
+  aspect-ratio: 1.35;
+}
+.asset-pick .asset-preview {
+  height: 110px;
+  padding: 0;
+}
+.asset-pick .preview-placeholder {
+  padding: 0;
+  display: flex;
+}
+.media-viewer .asset-preview {
+  min-height: 230px;
+  max-height: 430px;
+}
+.media-viewer .asset-preview img {
+  height: auto;
+  max-height: 430px;
+  object-fit: contain;
+}
 .content-summary {
   flex: 1;
   min-width: 0;

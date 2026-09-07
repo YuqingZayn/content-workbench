@@ -17,7 +17,8 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {execFileSync} from 'node:child_process';
+import { execFileSync } from "node:child_process";
+import sharp from "sharp";
 import type { Workspace } from "../src/contracts/model";
 const base = mkdtempSync(path.join(os.tmpdir(), "content-workbench-e2e-"));
 const userData = path.join(base, "user-data");
@@ -377,9 +378,14 @@ test("2 GiB registered media streams bounded ranges without whole-file memory us
     Buffer.from("00000018667479706d703432000000006d70343269736f6d", "hex"),
   );
   try {
-    if(process.platform==='win32')execFileSync('fsutil.exe',['sparse','setflag',file],{windowsHide:true});
-    ftruncateSync(fd,size);
-  } finally {closeSync(fd);}
+    if (process.platform === "win32")
+      execFileSync("fsutil.exe", ["sparse", "setflag", file], {
+        windowsHide: true,
+      });
+    ftruncateSync(fd, size);
+  } finally {
+    closeSync(fd);
+  }
   const { app, page } = await launch();
   try {
     const before = await app.evaluate(() => process.memoryUsage().rss);
@@ -429,5 +435,179 @@ test("2 GiB registered media streams bounded ranges without whole-file memory us
   } finally {
     await app.close();
     unlinkSync(file);
+  }
+});
+
+test("large-image pages use cached previews and load originals only on request", async () => {
+  const root = path.join(base, "大图预览性能");
+  mkdirSync(root);
+  const count = 8;
+  for (let index = 0; index < count; index++) {
+    await sharp({
+      create: {
+        width: 3200,
+        height: 2400,
+        channels: 3,
+        background: { r: 40 + index * 20, g: 120, b: 90 },
+      },
+    })
+      .composite([
+        {
+          input: Buffer.from(
+            `<svg width="3200" height="2400"><circle cx="${600 + index * 180}" cy="1200" r="700" fill="#edca93"/><rect x="300" y="300" width="1000" height="120" fill="#ffffff"/></svg>`,
+          ),
+        },
+      ])
+      .png({ compressionLevel: 0 })
+      .toFile(path.join(root, `large-${index}.png`));
+  }
+  const { app, page } = await launch();
+  try {
+    await dialogFiles(app, [root]);
+    await page
+      .getByRole("button", { name: "打开本地文件夹", exact: true })
+      .click();
+    await expect(page.locator(".project-switch")).toContainText("大图预览性能");
+    const w = await page.evaluate(async () => {
+      const bootstrap = await window.workbench.call<any>("app.bootstrap");
+      return window.workbench.call<Workspace>("project.load", {
+        projectId: bootstrap.recent[0].id,
+      });
+    });
+    expect(w.assets).toHaveLength(count);
+    const originalMs = await page.evaluate(
+      async ({ projectId, ids }) => {
+        const start = performance.now();
+        await Promise.all(
+          ids.map(
+            (id) =>
+              new Promise<void>((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                  void img.decode().then(() => resolve(), reject);
+                };
+                img.onerror = () => reject(new Error("Original failed"));
+                img.src = `media://asset/${projectId}/${id}`;
+              }),
+          ),
+        );
+        return performance.now() - start;
+      },
+      { projectId: w.project.id, ids: w.assets.map((asset) => asset.id) },
+    );
+    const start = Date.now();
+    await page.getByRole("button", { name: "素材库", exact: true }).click();
+    await expect(page.locator(".asset-card .asset-preview.loaded")).toHaveCount(
+      count,
+    );
+    const coldMs = Date.now() - start;
+    const previews = await page
+      .locator(".asset-card img")
+      .evaluateAll((images) =>
+        images.map((image) => ({
+          src: (image as HTMLImageElement).src,
+          width: (image as HTMLImageElement).naturalWidth,
+        })),
+      );
+    expect(
+      previews.every(
+        (image) =>
+          image.src.startsWith("media://thumbnail/") && image.width <= 512,
+      ),
+    ).toBe(true);
+    const cached = await app.evaluate(
+      async ({ net }, { projectId, ids }) => {
+        const start = performance.now();
+        const results = await Promise.all(
+          ids.map(async (id) => {
+            const response = await net.fetch(
+              `media://thumbnail/${projectId}/${id}`,
+            );
+            return {
+              status: response.status,
+              cache: response.headers.get("x-preview-cache"),
+              bytes: (await response.arrayBuffer()).byteLength,
+              etag: response.headers.get("etag"),
+            };
+          }),
+        );
+        const conditional = await net.fetch(
+          `media://thumbnail/${projectId}/${ids[0]}`,
+          { headers: { "If-None-Match": results[0].etag! } },
+        );
+        const foreign = await net.fetch(
+          `media://thumbnail/${projectId}/00000000-0000-4000-8000-000000000001`,
+        );
+        return {
+          results,
+          ms: performance.now() - start,
+          conditional: conditional.status,
+          foreign: foreign.status,
+        };
+      },
+      { projectId: w.project.id, ids: w.assets.map((asset) => asset.id) },
+    );
+    expect(
+      cached.results.every(
+        (result) => result.status === 200 && result.cache === "hit",
+      ),
+    ).toBe(true);
+    expect(cached.conditional).toBe(304);
+    expect(cached.foreign).toBe(404);
+    const originalBytes = w.assets.reduce((sum, asset) => sum + asset.bytes, 0);
+    const previewBytes = cached.results.reduce(
+      (sum, result) => sum + result.bytes,
+      0,
+    );
+    expect(previewBytes).toBeLessThan(originalBytes / 50);
+    await page.getByRole("button", { name: "工作台", exact: true }).click();
+    const warmStart = Date.now();
+    await page.getByRole("button", { name: "素材库", exact: true }).click();
+    await expect(page.locator(".asset-card .asset-preview.loaded")).toHaveCount(
+      count,
+    );
+    const warmMs = Date.now() - warmStart;
+    await page.locator(".asset-card").first().click();
+    await expect(
+      page.locator(".media-viewer .asset-preview.loaded"),
+    ).toHaveCount(1);
+    const detail = page.locator(".media-viewer img");
+    expect(
+      await detail.evaluate((img: HTMLImageElement) => img.naturalWidth),
+    ).toBe(1600);
+    await page.getByRole("button", { name: "查看原图", exact: true }).click();
+    await expect
+      .poll(() =>
+        page
+          .locator(".media-viewer img")
+          .evaluate((img: HTMLImageElement) => img.naturalWidth),
+      )
+      .toBe(3200);
+    await page.getByRole("button", { name: "关闭对话框", exact: true }).click();
+    await page.screenshot({ path: ".local/e2e-evidence/optimized-assets.png" });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.screenshot({
+      path: ".local/e2e-evidence/optimized-assets-dark.png",
+    });
+    const report = {
+      verifiedAt: new Date().toISOString(),
+      count,
+      originalBytes,
+      previewBytes,
+      originalMs,
+      coldMs,
+      warmMs,
+      cachedProtocolMs: cached.ms,
+      cacheHits: count,
+      detailEdge: 1600,
+      originalEdge: 3200,
+    };
+    writeFileSync(
+      ".local/e2e-evidence/image-performance.json",
+      JSON.stringify(report, null, 2),
+    );
+    console.log(JSON.stringify(report));
+  } finally {
+    await app.close();
   }
 });
