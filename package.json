@@ -16,6 +16,8 @@
     "test:integration": "tsx --test tests/integration.test.ts",
     "test:e2e": "npm run build && playwright test",
     "verify:codex": "tsx scripts/verify-codex.ts",
+    "verify:first-loop": "tsx scripts/verify-first-loop.ts",
+    "test:package": "node scripts/smoke-package.mjs",
     "dist:win": "npm run build && electron-builder --win nsis portable --x64",
     "start": "electron ."
   },
@@ -60,10 +62,14 @@
       "signAndEditExecutable": false
     },
     "nsis": {
+      "artifactName": "Content-Workbench-Setup-${version}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
     },
-    "artifactName": "Content-Workbench-${version}-${arch}-${target}.${ext}"
+    "portable": {
+      "artifactName": "Content-Workbench-Portable-${version}-${arch}.${ext}"
+    },
+    "artifactName": "Content-Workbench-${version}-${arch}.${ext}"
   }
 }

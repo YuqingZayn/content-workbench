@@ -84,11 +84,13 @@ export class CodexService {
           ),
       );
       c.on("disconnected", () => {
-        this.status = {
-          ...this.status,
-          state: "error",
-          message: "Codex 进程中断，可重新连接",
-        };
+        if (this.connection !== c) return;
+        if (this.status.state !== "error")
+          this.status = {
+            ...this.status,
+            state: "error",
+            message: "Codex 进程中断，可重新连接",
+          };
         this.resumed.clear();
         if (this.active) this.failActive("连接中断，未重复提交");
         for (const run of this.queue.splice(0)) {
@@ -288,7 +290,10 @@ export class CodexService {
     if (!run) return;
     const p = message.params ?? {};
     if (p.threadId && p.threadId !== run.threadId) return;
-    if (p.turnId && run.turnId && p.turnId !== run.turnId) return;
+    const eventTurnId =
+      p.turnId ?? (message.method.startsWith("turn/") ? p.turn?.id : undefined);
+    if (eventTurnId && run.turnId && eventTurnId !== run.turnId) return;
+    if (message.method === "turn/completed" && !run.turnId) return;
     if (message.method === "turn/started") {
       run.turnId = p.turn.id;
       this.persist(run);
@@ -385,6 +390,7 @@ export class CodexService {
       delete this.status.activeRunId;
     }
     this.emit({ type: "codex-status" });
+    queueMicrotask(() => void this.drain());
   }
   async stop(projectId: string, runId: string) {
     const queued = this.queue.find(

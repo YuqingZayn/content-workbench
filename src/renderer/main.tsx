@@ -1442,6 +1442,7 @@ function Editor({
               平台
               <select
                 value={platform}
+                aria-label="平台"
                 onChange={(e) => setPlatform(e.target.value as Platform)}
               >
                 {platforms.map((p) => (
@@ -1455,6 +1456,7 @@ function Editor({
               语言
               <select
                 value={locale}
+                aria-label="语言"
                 onChange={(e) => setLocale(e.target.value)}
               >
                 <option value="zh-CN">简体中文</option>
@@ -1594,7 +1596,9 @@ function Editor({
             <button
               className="secondary"
               onClick={() => {
-                void navigator.clipboard.writeText(conflict.proposed.body);
+                void api.call("clipboard.copy", {
+                  text: conflict.proposed.body,
+                });
                 notice("已复制你的未提交内容");
               }}
             >
@@ -1868,7 +1872,7 @@ function Assistant({
                     } catch {
                       /* preserve raw result */
                     }
-                    void navigator.clipboard.writeText(body);
+                    void api.call("clipboard.copy", { text: body });
                     notice("已复制建议内容，可粘贴到编辑器合并");
                   }}
                 >
@@ -2383,6 +2387,7 @@ function Accounts({ w, refresh, notice }: Common) {
               身份类型
               <select
                 value={profile.identityType}
+                aria-label="身份类型"
                 onChange={(e) =>
                   setProfile({
                     ...profile,

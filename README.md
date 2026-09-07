@@ -4,6 +4,8 @@
 
 Electron 44 + React 19 + TypeScript + SQLite。业务项目是普通文件夹，不要求 Git，也不搬走原素材。此仓库管理应用源码，不保存运营账号凭据或真实业务数据。
 
+![桌面工作台演示](docs/screenshots/dashboard.png)
+
 ## 运行
 
 需要 Node.js 22.18 或更高版本、Windows 10/11 x64。首次运行会下载 Electron 运行时。

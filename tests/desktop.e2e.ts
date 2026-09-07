@@ -5,9 +5,19 @@ import {
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  openSync,
+  writeSync,
+  ftruncateSync,
+  closeSync,
+  unlinkSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {execFileSync} from 'node:child_process';
 import type { Workspace } from "../src/contracts/model";
 const base = mkdtempSync(path.join(os.tmpdir(), "content-workbench-e2e-"));
 const userData = path.join(base, "user-data");
@@ -16,14 +26,20 @@ const founder = path.join(base, "演示创始人");
 for (const folder of [official, founder, path.resolve(".local/e2e-evidence")])
   mkdirSync(folder, { recursive: true });
 async function launch() {
-  const env: Record<string,string> = {
-    ...Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string,string] => entry[1] !== undefined)),
+  const env: Record<string, string> = {
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined,
+      ),
+    ),
     WORKBENCH_USER_DATA: userData,
   };
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ["."], env, timeout: 30000 });
   const page = await app.firstWindow();
-  page.on('console', message => { if(message.type()==='error') console.log('Renderer:',message.text()); });
+  page.on("console", (message) => {
+    if (message.type() === "error") console.log("Renderer:", message.text());
+  });
   await page.waitForLoadState("domcontentloaded");
   return { app, page };
 }
@@ -132,7 +148,7 @@ test("desktop first loop: import/play, versions, two targets, independent identi
       });
     });
     const ranges = await app.evaluate(
-      async ({net}, p) => {
+      async ({ net }, p) => {
         const url = `media://asset/${p.id}/${p.assetId}`;
         const valid = await net.fetch(url, {
           headers: { Range: "bytes=0-31" },
@@ -235,8 +251,8 @@ test("desktop first loop: import/play, versions, two targets, independent identi
     await page.screenshot({ path: ".local/e2e-evidence/content-editor.png" });
     await page.getByRole("button", { name: "安排发布", exact: true }).click();
     const schedule = page.getByRole("dialog");
-    await schedule.getByText("演示共创一群", { exact: true }).click();
-    await schedule.getByText("演示共创二群", { exact: true }).click();
+    await schedule.getByRole("checkbox", { name: /演示共创一群/ }).check();
+    await schedule.getByRole("checkbox", { name: /演示共创二群/ }).check();
     await schedule
       .getByRole("button", { name: "创建 2 个目标任务", exact: true })
       .click();
@@ -342,11 +358,76 @@ test("desktop first loop: import/play, versions, two targets, independent identi
         2,
       ),
     );
-  } catch(error) {
-    await page.screenshot({path:'.local/e2e-evidence/failure.png'});
-    console.log((await page.locator('body').innerText()).slice(-3500));
+  } catch (error) {
+    await page.screenshot({ path: ".local/e2e-evidence/failure.png" });
+    console.log((await page.locator("body").innerText()).slice(-3500));
     throw error;
   } finally {
     await app.close();
+  }
+});
+test("2 GiB registered media streams bounded ranges without whole-file memory use", async () => {
+  const root = path.join(base, "大文件中文路径");
+  mkdirSync(root);
+  const file = path.join(root, "2GB reference.mp4");
+  const size = 2 * 1024 * 1024 * 1024 + 64;
+  const fd = openSync(file, "wx");
+  writeSync(
+    fd,
+    Buffer.from("00000018667479706d703432000000006d70343269736f6d", "hex"),
+  );
+  try {
+    if(process.platform==='win32')execFileSync('fsutil.exe',['sparse','setflag',file],{windowsHide:true});
+    ftruncateSync(fd,size);
+  } finally {closeSync(fd);}
+  const { app, page } = await launch();
+  try {
+    const before = await app.evaluate(() => process.memoryUsage().rss);
+    const w = await page.evaluate(
+      (root) =>
+        window.workbench.call<Workspace>("project.open", { path: root }),
+      root,
+    );
+    expect(w.assets).toHaveLength(1);
+    const result = await app.evaluate(
+      async ({ net }, p) => {
+        const response = await net.fetch(
+          `media://asset/${p.projectId}/${p.assetId}`,
+          { headers: { Range: `bytes=${p.start}-${p.start + 31}` } },
+        );
+        return {
+          status: response.status,
+          bytes: (await response.arrayBuffer()).byteLength,
+          range: response.headers.get("content-range"),
+          rss: process.memoryUsage().rss,
+        };
+      },
+      {
+        projectId: w.project.id,
+        assetId: w.assets[0].id,
+        start: 2 * 1024 * 1024 * 1024,
+      },
+    );
+    expect(result.status).toBe(206);
+    expect(result.bytes).toBe(32);
+    expect(result.range).toBe(`bytes 2147483648-2147483679/${size}`);
+    expect(result.rss - before).toBeLessThan(256 * 1024 * 1024);
+    writeFileSync(
+      ".local/e2e-evidence/large-range.json",
+      JSON.stringify(
+        {
+          verifiedAt: new Date().toISOString(),
+          size,
+          ...result,
+          rssGrowth: result.rss - before,
+          sparseFixture: true,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
+    unlinkSync(file);
   }
 });

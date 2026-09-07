@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, symlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, symlinkSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseRange, safePath, uuid, within } from "../src/services/files";
@@ -64,4 +64,21 @@ test("schema rejects unsupported platform and foreign IDs", () => {
     false,
   );
   assert.throws(() => findCodex("C:/missing-codex-app/codex.exe"));
+});
+test("captured CLI events replay through partial UTF-8 chunks", () => {
+  const input = readFileSync(
+    new URL("./fixtures/codex-events.jsonl", import.meta.url),
+  );
+  const expected = input
+    .toString("utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  const actual: unknown[] = [];
+  const parser = new JsonLines();
+  parser.on("message", (m) => actual.push(m));
+  for (let i = 0; i < input.length; i += 11)
+    parser.push(input.subarray(i, i + 11));
+  assert.deepEqual(actual, expected);
+  assert.ok(expected.some((e) => e.method === "turn/completed"));
 });

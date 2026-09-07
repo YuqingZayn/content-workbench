@@ -1,0 +1,584 @@
+{"method":"turn/started","params":{"threadId":"thread-demo","turn":{"id":"turn-demo","status":"inProgress"}}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"userMessage"}}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"userMessage"}}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo"}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo"}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"agentMessage","text":""}}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"{\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"variant"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Id"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"303"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"d"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"248"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"457"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"cf"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"b"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"86"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"df"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"047"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"db"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"261"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"0"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"title"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Content"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" Work"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bench"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" Demo"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"body"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Demo"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" We"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" completed"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" the"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" local"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" content"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" work"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bench"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" asset"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" import"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" test"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"."}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" No"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" user"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" data"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":".\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"tags"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [],\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"asset"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Ids"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"534"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"dd"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"569"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"81"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"af"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"8"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"227"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"2"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"df"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"d"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"814"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"8"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"fee"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"42"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ef"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-ba"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-ee"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"353"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"0"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ad"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"639"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"23"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"65"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"831"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"43"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"87"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"cb"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"591"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"363"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\"\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" ],\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"fact"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Notes"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Attachments"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" are"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" demo"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" color"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" blocks"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"."}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" No"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" facts"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" inferred"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" from"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" images"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" or"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" metrics"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" added"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":".\"\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" ]\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"}"}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"agentMessage","text":"{\n  \"variantId\": \"303d248a-4573-4cfb-86df-047db2614e0e\",\n  \"title\": \"Content Workbench Demo\",\n  \"body\": \"Demo: We completed the local content workbench asset import test. No user data.\",\n  \"tags\": [],\n  \"assetIds\": [\n    \"534c4ddf-e569-4a81-ae1f-3afc8f2273a4\",\n    \"2dfd8148-1fee-42ef-ba1f-ee353f0ad639\",\n    \"3bc23f65-a831-4a43-87cb-e591a1bc363f\"\n  ],\n  \"factNotes\": [\n    \"Attachments are demo color blocks. No facts inferred from images or metrics added.\"\n  ]\n}"}}}
+{"method":"turn/completed","params":{"threadId":"thread-demo","turn":{"id":"turn-demo","status":"completed"}}}
+{"method":"turn/started","params":{"threadId":"thread-demo","turn":{"id":"turn-demo","status":"inProgress"}}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"userMessage"}}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"userMessage"}}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo"}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo"}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"agentMessage","text":""}}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"{\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"variant"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Id"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"5"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"0"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"b"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"657"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"22"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"d"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"442"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-b"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"0"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"947"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"eb"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"fb"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ca"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"title"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Content"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" Work"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bench"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" Demo"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"body"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Demo"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":":\\"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"We"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" completed"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" the"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" local"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" content"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" work"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bench"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" asset"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" import"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" test"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":".\\"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"No"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" user"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" data"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":".\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"tags"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [],\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"asset"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Ids"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"534"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"dd"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"569"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"81"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"af"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"8"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"227"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"2"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"df"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"d"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"814"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"8"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"fee"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"42"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ef"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-ba"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-ee"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"353"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"0"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ad"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"639"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"23"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"65"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"831"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"43"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"87"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"cb"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"591"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"363"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\"\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" ],\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"fact"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Notes"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Attachments"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" are"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" demo"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" color"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" blocks"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"."}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" No"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" image"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-derived"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" claims"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" or"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" metrics"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" added"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":".\"\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" ]\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"}"}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"agentMessage","text":"{\n  \"variantId\": \"a5a0b657-f22d-442f-b1c0-947eb3fbca3c\",\n  \"title\": \"Content Workbench Demo\",\n  \"body\": \"Demo:\\nWe completed the local content workbench asset import test.\\nNo user data.\",\n  \"tags\": [],\n  \"assetIds\": [\n    \"534c4ddf-e569-4a81-ae1f-3afc8f2273a4\",\n    \"2dfd8148-1fee-42ef-ba1f-ee353f0ad639\",\n    \"3bc23f65-a831-4a43-87cb-e591a1bc363f\"\n  ],\n  \"factNotes\": [\n    \"Attachments are demo color blocks. No image-derived claims or metrics added.\"\n  ]\n}"}}}
+{"method":"turn/completed","params":{"threadId":"thread-demo","turn":{"id":"turn-demo","status":"completed"}}}
+{"method":"turn/started","params":{"threadId":"thread-demo","turn":{"id":"turn-demo","status":"inProgress"}}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"userMessage"}}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"userMessage"}}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo"}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo"}}
+{"method":"item/started","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"agentMessage","text":""}}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"{\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"variant"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Id"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"8"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"dc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"0"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"478"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"08"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"6"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"49"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"5"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-b"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ee"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"eb"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"53"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ba"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"5"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"dc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bb"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"title"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"内容"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"工作"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"台"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"演"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"示"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"body"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"记录"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"一次"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"演"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"示"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"："}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"我们"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"已"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"完成"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"本"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"地"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"内容"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"工作"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"台"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"的"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"素材"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"导"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"入"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"测试"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"。\\"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"本"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"次"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"不"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"涉及"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"用户"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"数据"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"，"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"配"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"图"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"仅"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"为"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"演"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"示"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"色"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"块"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"。\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"tags"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [],\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"asset"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Ids"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"534"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"dd"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"569"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"81"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"af"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"c"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"8"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"227"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"2"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"df"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"d"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"814"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"8"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"fee"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"42"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ef"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-ba"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-ee"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"353"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"0"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"ad"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"639"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\",\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"3"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"23"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"65"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"831"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"4"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"43"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"87"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"cb"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"-e"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"591"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"a"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"1"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"bc"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"363"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"f"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\"\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" ],\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"fact"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"Notes"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\":"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" [\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"   "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" \""}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"仅"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"依据"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"已"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"确认"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"事实"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"和"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"附件"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"说明"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"撰"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"写"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"，"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"未"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"添加"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"指标"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"或"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"从"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"图"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"像"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"推"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"断"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"事实"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"。"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"\"\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" "}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":" ]\n"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread-demo","turnId":"turn-demo","delta":"}"}}
+{"method":"item/completed","params":{"threadId":"thread-demo","turnId":"turn-demo","item":{"id":"item-demo","type":"agentMessage","text":"{\n  \"variantId\": \"8dc0c478-08a6-49a5-b1ee-feb53ba5dcbb\",\n  \"title\": \"内容工作台演示\",\n  \"body\": \"记录一次演示：我们已完成本地内容工作台的素材导入测试。\\n本次不涉及用户数据，配图仅为演示色块。\",\n  \"tags\": [],\n  \"assetIds\": [\n    \"534c4ddf-e569-4a81-ae1f-3afc8f2273a4\",\n    \"2dfd8148-1fee-42ef-ba1f-ee353f0ad639\",\n    \"3bc23f65-a831-4a43-87cb-e591a1bc363f\"\n  ],\n  \"factNotes\": [\n    \"仅依据已确认事实和附件说明撰写，未添加指标或从图像推断事实。\"\n  ]\n}"}}}
+{"method":"turn/completed","params":{"threadId":"thread-demo","turn":{"id":"turn-demo","status":"completed"}}}

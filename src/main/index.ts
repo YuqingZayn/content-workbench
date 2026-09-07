@@ -85,6 +85,11 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
     return service.restore(source, destination);
   }
   if (method === "codex.status") return codex.status;
+  if (method === "clipboard.copy") {
+    const p = z.object({ text: z.string().max(200000) }).parse(data);
+    await clipboard.writeText(p.text);
+    return true;
+  }
   if (method === "codex.connect")
     return codex.connect(codex.readSettings().codexPath);
   if (method === "settings.codexPath") {
@@ -406,9 +411,20 @@ app.whenReady().then(async () => {
   win.webContents.on("will-navigate", (event, url) => {
     if (url !== entry) event.preventDefault();
   });
-  win.webContents.on('will-prevent-unload', async event => {
-    const choice = await dialog.showMessageBox(win, {type:'question',buttons:['返回保存','放弃未保存修改并退出'],defaultId:0,cancelId:0,message:'当前草稿尚未保存。'});
-    if(choice.response === 1) { event.preventDefault(); closing = true; win.destroy(); app.quit(); }
+  win.webContents.on("will-prevent-unload", async (event) => {
+    const choice = await dialog.showMessageBox(win, {
+      type: "question",
+      buttons: ["返回保存", "放弃未保存修改并退出"],
+      defaultId: 0,
+      cancelId: 0,
+      message: "当前草稿尚未保存。",
+    });
+    if (choice.response === 1) {
+      event.preventDefault();
+      closing = true;
+      win.destroy();
+      app.quit();
+    }
   });
   win.webContents.session.setPermissionRequestHandler(
     (_wc, _permission, callback) => callback(false),

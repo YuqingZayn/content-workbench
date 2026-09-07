@@ -1,12 +1,20 @@
 import { DatabaseSync } from "node:sqlite";
 import type { Job, AiRun } from "../contracts/model";
-import {AppError} from '../services/files';
+import { AppError } from "../services/files";
 export class StateDatabase {
   db: DatabaseSync;
   constructor(file: string, readOnly = false) {
     this.db = new DatabaseSync(file, { readOnly });
-    const version = this.db.prepare('PRAGMA user_version').get() as {user_version:number};
-    if(version.user_version > 1) { this.db.close(); throw new AppError('SCHEMA_UNSUPPORTED', '数据库版本较新，原文件已保留，请使用兼容版本'); }
+    const version = this.db.prepare("PRAGMA user_version").get() as {
+      user_version: number;
+    };
+    if (version.user_version > 1) {
+      this.db.close();
+      throw new AppError(
+        "SCHEMA_UNSUPPORTED",
+        "数据库版本较新，原文件已保留，请使用兼容版本",
+      );
+    }
     if (!readOnly) {
       this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
     CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,payload TEXT NOT NULL);

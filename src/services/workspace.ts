@@ -193,7 +193,16 @@ export class WorkspaceService {
       .parse(
         readJson(safePath(project.root, `.content-workspace/${file}.json`)),
       ).items;
-    if(items.some(item => typeof item === 'object' && item !== null && 'projectId' in item && item.projectId !== id)) throw new AppError('PROJECT_MISMATCH', '登记数据包含其他项目的记录');
+    if (
+      items.some(
+        (item) =>
+          typeof item === "object" &&
+          item !== null &&
+          "projectId" in item &&
+          item.projectId !== id,
+      )
+    )
+      throw new AppError("PROJECT_MISMATCH", "登记数据包含其他项目的记录");
     return items;
   }
   saveList(id: string, file: string, items: unknown[]) {
@@ -855,7 +864,11 @@ export class WorkspaceService {
     );
     const finalTarget = safePath(project.root, `exports/${job.id}`);
     if (existsSync(finalTarget)) {
-      if (!existsSync(path.join(finalTarget, 'target.json'))) throw new AppError('EXPORT_INCOMPLETE', '导出目录不完整，请保留该目录并另行备份后处理');
+      if (!existsSync(path.join(finalTarget, "target.json")))
+        throw new AppError(
+          "EXPORT_INCOMPLETE",
+          "导出目录不完整，请保留该目录并另行备份后处理",
+        );
       return finalTarget;
     }
     const target = safePath(project.root, `exports/${job.id}-${uuid()}.tmp`);
@@ -967,10 +980,13 @@ export class WorkspaceService {
     const assets = this.list(id, "assets", assetSchema);
     const missing: string[] = [];
     for (const a of assets) {
-      if (a.storageMode === 'copy') {
+      if (a.storageMode === "copy") {
         const file = assetFile(project.root, a);
         const dest = safePath(destination, a.path);
-        if (!existsSync(dest)) { mkdirSync(path.dirname(dest), {recursive: true}); copyFileSync(file, dest, constants.COPYFILE_EXCL); }
+        if (!existsSync(dest)) {
+          mkdirSync(path.dirname(dest), { recursive: true });
+          copyFileSync(file, dest, constants.COPYFILE_EXCL);
+        }
         a.modifiedMs = statSync(dest).mtimeMs;
       }
     }

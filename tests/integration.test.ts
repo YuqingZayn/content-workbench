@@ -21,6 +21,8 @@ import {
   fileHash,
 } from "../src/services/files";
 import type { Content } from "../src/contracts/model";
+import { platforms, type AiRun } from "../src/contracts/model";
+import { CodexService } from "../src/services/codex/service";
 const image = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1foAAAAASUVORK5CYII=",
   "base64",
@@ -326,6 +328,143 @@ test("duplicate project IDs are rejected, moved project and lock release work", 
     assert.equal(opened.project.id, w.project.id);
     assert.equal(opened.project.root, moved);
   } finally {
+    workspace.closeAll();
+  }
+});
+test("all nine platforms export independent manual packages without external sends", async () => {
+  const { workspace, w } = await setup();
+  try {
+    for (const platform of platforms) {
+      let c = workspace.createContent(w.project.id, `演示 ${platform}`);
+      c = workspace.addVariant(w.project.id, c.id, platform, "zh-CN");
+      c = ready(workspace, w.project.id, c, "仅用于本地辅助发布验收");
+      const account = workspace
+        .addAccount(w.project.id, {
+          platform,
+          label: `演示 ${platform}`,
+          externalId: "",
+          accountType: "profile",
+        })
+        .accounts.at(-1)!;
+      const target = workspace
+        .addTarget(w.project.id, {
+          accountId: account.id,
+          label: `目标 ${platform}`,
+          kind: "profile",
+        })
+        .targets.at(-1)!;
+      const [job] = await workspace.schedule(w.project.id, {
+        contentId: c.id,
+        variantId: c.variants[0].id,
+        targetIds: [target.id],
+        scheduledAtUtc: "2030-01-01T00:00:00Z",
+        timezone: "Asia/Shanghai",
+      });
+      const folder = workspace.exportJob(w.project.id, job.id);
+      assert.equal(
+        readJson<{ platform: string }>(path.join(folder, "target.json"))
+          .platform,
+        platform,
+      );
+      assert.equal(workspace.job(w.project.id, job.id).status, "scheduled");
+    }
+    assert.equal(workspace.load(w.project.id).jobs.length, 9);
+  } finally {
+    workspace.closeAll();
+  }
+});
+test("AI event simulation preserves concurrent edits, rejects foreign media and ignores stale completion", async () => {
+  const { workspace, w } = await setup();
+  const ai = new CodexService(workspace, () => {});
+  try {
+    let c = workspace.createContent(w.project.id, "AI 冲突演示");
+    c = workspace.addVariant(w.project.id, c.id, "wechat", "zh-CN");
+    ai.status = {
+      state: "ready",
+      message: "test simulation",
+      version: "test",
+      models: [],
+    };
+    const makeRun = () => {
+      ai.active = {} as AiRun;
+      const run = ai.start({
+        projectId: w.project.id,
+        contentId: c.id,
+        variantId: c.variants[0].id,
+        prompt: "test simulation",
+      });
+      ai.queue = [];
+      run.threadId = "thread-test";
+      run.turnId = uuid();
+      run.status = "running";
+      ai.active = run;
+      return run;
+    };
+    const run = makeRun();
+    const v = workspace.getContent(w.project.id, c.id).variants[0];
+    workspace.saveVariant(w.project.id, c.id, {
+      variant: { ...v, body: "user edited during AI" },
+      baseRevision: v.revision,
+      baseHash: v.bodyHash,
+    });
+    run.output = JSON.stringify({
+      variantId: v.id,
+      title: "AI",
+      body: "AI suggestion",
+      tags: [],
+      assetIds: [],
+      factNotes: [],
+    });
+    await ai.onNotification({
+      method: "turn/completed",
+      params: {
+        threadId: run.threadId,
+        turn: { id: run.turnId, status: "completed" },
+      },
+    });
+    assert.equal(
+      workspace.load(w.project.id).runs.find((r) => r.id === run.id)?.status,
+      "suggestion",
+    );
+    assert.equal(
+      workspace.getContent(w.project.id, c.id).variants[0].body,
+      "user edited during AI",
+    );
+    const next = makeRun();
+    next.output = JSON.stringify({
+      variantId: v.id,
+      title: "AI",
+      body: "invalid media",
+      tags: [],
+      assetIds: [uuid()],
+      factNotes: [],
+    });
+    await ai.onNotification({
+      method: "turn/completed",
+      params: {
+        threadId: run.threadId,
+        turn: { id: run.turnId, status: "completed" },
+      },
+    });
+    assert.equal(ai.active?.id, next.id);
+    await ai.onNotification({
+      method: "turn/completed",
+      params: {
+        threadId: next.threadId,
+        turn: { id: next.turnId, status: "completed" },
+      },
+    });
+    assert.equal(
+      workspace.load(w.project.id).runs.find((r) => r.id === next.id)?.status,
+      "invalid",
+    );
+    assert.equal(
+      workspace.getContent(w.project.id, c.id).variants[0].body,
+      "user edited during AI",
+    );
+  } finally {
+    ai.active = undefined;
+    ai.queue = [];
     workspace.closeAll();
   }
 });
