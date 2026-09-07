@@ -4,6 +4,10 @@
 
 Electron 44 + React 19 + TypeScript + SQLite。业务项目是普通文件夹，不要求 Git，也不搬走原素材。此仓库管理应用源码，不保存运营账号凭据或真实业务数据。
 
+## 本地私密文件放在哪里
+
+密钥、平台登录凭据、私有配置和业务备份统一放在仓库下的 `local-private/`。该目录整体被 Git 忽略，不会随正常的 `git add`、提交和推送上传到 GitHub。它只在本机创建，GitHub 下载包中没有这个文件夹；其他电脑的创建方法及完整清单见 [本地私密文件与 Git 忽略规则](docs/local-private-files.md)。Codex 继续使用本机 CLI 登录，无需复制登录凭据。
+
 ## 怎么启动软件
 
 ### dev 分支开发启动
