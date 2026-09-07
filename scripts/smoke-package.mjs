@@ -1,15 +1,17 @@
 import { _electron as electron } from "@playwright/test";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import path from "node:path";
 const executablePath = path.resolve(
   process.argv[2] || "release/win-unpacked/Content Workbench.exe",
 );
+const temporary = path.resolve(".local/package-smoke-runtime");
+mkdirSync(temporary, { recursive: true });
+mkdirSync(".local/e2e-evidence", { recursive: true });
 const env = {
   ...process.env,
-  WORKBENCH_USER_DATA: mkdtempSync(
-    path.join(os.tmpdir(), "workbench-packaged-"),
-  ),
+  WORKBENCH_USER_DATA: mkdtempSync(path.join(temporary, "user-data-")),
+  TEMP: temporary,
+  TMP: temporary,
 };
 delete env.ELECTRON_RUN_AS_NODE;
 const app = await electron.launch({

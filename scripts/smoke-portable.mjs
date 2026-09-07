@@ -10,15 +10,13 @@ await new Promise((resolve) => listener.close(resolve));
 const executable = path.resolve(
   "release/Content-Workbench-Portable-0.1.0-x64.exe",
 );
-const portableTemp = path.resolve('.local/portable-runtime');
-mkdirSync(portableTemp,{recursive:true});
+const portableTemp = path.resolve(".local/portable-runtime");
+mkdirSync(portableTemp, { recursive: true });
 const env = {
   ...process.env,
-  WORKBENCH_USER_DATA: mkdtempSync(
-    path.join(portableTemp, "user-data-"),
-  ),
-  TEMP:portableTemp,
-  TMP:portableTemp,
+  WORKBENCH_USER_DATA: mkdtempSync(path.join(portableTemp, "user-data-")),
+  TEMP: portableTemp,
+  TMP: portableTemp,
 };
 delete env.ELECTRON_RUN_AS_NODE;
 const child = spawn(
@@ -27,12 +25,13 @@ const child = spawn(
   { env, windowsHide: true, stdio: "ignore" },
 );
 let browser;
-child.on('exit',code=>console.log('Portable launcher exit:',code));
+child.on("exit", (code) => console.log("Portable launcher exit:", code));
 try {
   const endpoint = `http://127.0.0.1:${port}`;
   let ready = false;
   for (let i = 0; i < 90; i++) {
-    if(child.exitCode!==null)throw new Error(`Portable launcher exited early: ${child.exitCode}`);
+    if (child.exitCode !== null)
+      throw new Error(`Portable launcher exited early: ${child.exitCode}`);
     try {
       const response = await fetch(endpoint + "/json/version");
       if (response.ok) {
@@ -70,7 +69,10 @@ try {
   );
   console.log("Portable self extraction, renderer and preload IPC passed");
   await page.evaluate(() => window.close());
-  await Promise.race([new Promise(resolve=>child.once('exit',resolve)),new Promise(resolve=>setTimeout(resolve,5000))]);
+  await Promise.race([
+    new Promise((resolve) => child.once("exit", resolve)),
+    new Promise((resolve) => setTimeout(resolve, 5000)),
+  ]);
 } finally {
   if (browser) await browser.close();
   if (child.exitCode === null) child.kill();
