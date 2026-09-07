@@ -4,18 +4,55 @@
 
 Electron 44 + React 19 + TypeScript + SQLite。业务项目是普通文件夹，不要求 Git，也不搬走原素材。此仓库管理应用源码，不保存运营账号凭据或真实业务数据。
 
-![桌面工作台演示](docs/screenshots/dashboard.png)
+## 怎么启动软件
 
-## 运行
+### 已有本次本地交付文件（推荐）
 
-需要 Node.js 22.18 或更高版本、Windows 10/11 x64。首次运行会下载 Electron 运行时。
+打开本次交付目录，双击上一级的 `启动内容工作台.cmd`。也可以直接双击本仓库目录下的 `release/win-unpacked/Content Workbench.exe`。
+
+**这会直接打开桌面软件，无需安装 Node.js 或运行 npm 命令。** 请保留完整的 `win-unpacked` 文件夹，不能只复制其中的 `.exe`。启动脚本和演示项目属于本地交付文件，不包含在 GitHub 源码下载包中。
+
+### 使用 Windows 安装包或便携包
+
+| 文件 | 启动方法 |
+|---|---|
+| `Content-Workbench-Setup-0.1.0-x64.exe` | 双击安装，选择安装目录；完成后通过快捷方式打开 Content Workbench |
+| `Content-Workbench-Portable-0.1.0-x64.exe` | 双击后等待解压和窗口出现；需要临时目录有足够空间 |
+| `win-unpacked/Content Workbench.exe` | 直接双击；整个 `win-unpacked` 文件夹必须保持完整 |
+
+本地产物位于 `release/`。仓库管理源码，源码 ZIP 不含现成的安装包；可在成功的 [Desktop checks 工作流](https://github.com/YuqingZayn/content-workbench/actions) 中查看构建附件，或按下文自行构建。
+
+本次构建未配置代码签名证书。如果便携版因临时目录空间不足无法启动，可运行已解压应用，或将安装版安装到空间充足的磁盘。
+
+### 从源码启动（仅开发时使用）
+
+需要 Windows x64、Node.js 22.18 或更高版本及 npm。**先在终端进入这个 README 所在的 `content-workbench` 目录，再执行命令。** 首次安装依赖需要网络，会获取 Electron 运行时。
 
 ```powershell
 npm ci
 npm run dev
 ```
 
-连接 AI 时，先在本机安装并登录 Codex CLI，或在设置中选择 `codex.exe`。手动编辑、素材管理和辅助发布不依赖 Codex 登录。当前协议验证基于 CLI 0.153.3；不读取 Codex 内部数据库或复制登录凭据。
+`npm run dev` 会构建代码并打开 Electron 窗口。开发期间保留终端；依赖已安装且锁文件未变化时，下次可直接运行 `npm run dev`。如果报错找不到 `package.json`，请检查当前目录；如果提示找不到 `npm`，请检查 Node.js 安装，或直接使用打包后的应用。
+
+## 软件打开后，先做什么
+
+1. 在欢迎页点击“打开本地文件夹”。
+2. 本次本地交付可选择上一级 `演示项目/演示官号` 或 `演示项目/演示创始人`；从 GitHub 获取源码的使用者可新建自己的空文件夹。
+3. 在“账号与定位”填写项目身份、发送账号和目标；在“素材库”导入图片或视频，在“内容库”创建主题和独立平台版本。
+4. 编辑后点击“保存草稿”。需要 AI 时，再按下一节连接 Codex。
+
+业务项目请选择自己的运营资料目录，每个身份一个文件夹。演示数据的发布结果标注为验收模拟，没有真实发送。
+
+## 连接 Codex（AI 起草时使用）
+
+先在本机安装并登录 Codex CLI，再点击右侧“连接本机 Codex”。如果提示找不到 CLI，在“设置与备份”中选择实际的 `codex.exe`。打开内容主题后，选择写入版本并输入需求。
+
+AI 生成需要网络和可用额度。手动编辑、素材管理、排期、导出和回填不依赖 Codex 登录。当前协议验证基于 CLI 0.153.3；不读取 Codex 内部数据库或复制登录凭据。
+
+![桌面工作台演示](docs/screenshots/dashboard.png)
+
+## 检查与打包
 
 ```powershell
 npm run typecheck
