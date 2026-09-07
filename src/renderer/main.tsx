@@ -1,0 +1,3306 @@
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  FolderOpen,
+  Plus,
+  LayoutDashboard,
+  Files,
+  Image as ImageIcon,
+  CalendarDays,
+  Send,
+  Users,
+  Settings,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  Clock,
+  Search,
+  X,
+  Download,
+  Folder,
+  Play,
+  Sparkles,
+  Copy,
+  RefreshCw,
+  PanelRightClose,
+  PanelRightOpen,
+  MoreHorizontal,
+  Square,
+  Link,
+  CheckCircle2,
+  AlertCircle,
+  Trash2,
+  Scissors,
+  Camera,
+  ArrowRight,
+} from "lucide-react";
+import {
+  platforms,
+  platformNames,
+  type Workspace,
+  type ProjectView,
+  type Content,
+  type Variant,
+  type Asset,
+  type Job,
+  type CodexStatus,
+  type Platform,
+  type Account,
+  type Target,
+} from "../contracts/model";
+import "./style.css";
+const api = window.workbench;
+const platformColor: Record<Platform, string> = {
+  x: "#242629",
+  discord: "#5865f2",
+  youtube: "#ed4946",
+  facebook: "#2576ee",
+  bilibili: "#21a4d3",
+  douyin: "#282a31",
+  xiaohongshu: "#ef4658",
+  instagram: "#b94b87",
+  wechat: "#32a670",
+};
+const statusName: Record<string, string> = {
+  scheduled: "已排期",
+  manual_pending: "待人工发布",
+  partial: "部分完成",
+  completed: "已完成",
+  paused: "已暂停",
+  cancelled: "已取消",
+  queued: "排队中",
+  running: "生成中",
+  stopping: "正在停止",
+  applied: "已应用到草稿",
+  suggestion: "建议待合并",
+  invalid: "输出未应用",
+  interrupted: "已中断",
+  failed: "失败",
+};
+const mediaUrl = (projectId: string, a: Asset) =>
+  `media://asset/${projectId}/${a.id}?revision=${a.sha256}`;
+const localInput = (date = new Date()) => {
+  const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+};
+const formatTime = (iso: string, tz = "Asia/Shanghai") =>
+  new Intl.DateTimeFormat("zh-CN", {
+    timeZone: tz,
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "shortOffset",
+  }).format(new Date(iso));
+const initials = (name: string) => name.trim().slice(0, 1) || "项";
+function Badge({ platform }: { platform: Platform }) {
+  return (
+    <span
+      className="platform-badge"
+      style={{ "--platform": platformColor[platform] } as React.CSSProperties}
+    >
+      {platformNames[platform]}
+    </span>
+  );
+}
+function Empty({
+  icon: Icon = Files,
+  title,
+  text,
+  action,
+}: {
+  icon?: typeof Files;
+  title: string;
+  text: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="empty">
+      <div className="empty-icon">
+        <Icon size={26} />
+      </div>
+      <h3>{title}</h3>
+      <p>{text}</p>
+      {action}
+    </div>
+  );
+}
+function Modal({
+  title,
+  onClose,
+  children,
+  wide = false,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  wide?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const first = ref.current?.querySelector<HTMLElement>(
+      "input,button,textarea,select",
+    );
+    first?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Tab") {
+        const els = [
+          ...ref.current!.querySelectorAll<HTMLElement>(
+            'button,input,textarea,select,[tabindex="0"]',
+          ),
+        ].filter((e) => !e.hasAttribute("disabled"));
+        if (e.shiftKey && document.activeElement === els[0]) {
+          e.preventDefault();
+          els.at(-1)?.focus();
+        } else if (!e.shiftKey && document.activeElement === els.at(-1)) {
+          e.preventDefault();
+          els[0]?.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [onClose]);
+  return (
+    <div className="modal-backdrop">
+      <div
+        ref={ref}
+        className={`modal ${wide ? "wide" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <div className="modal-heading">
+          <h2>{title}</h2>
+          <button className="icon" aria-label="关闭对话框" onClick={onClose}>
+            <X size={19} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+function App() {
+  const [recent, setRecent] = useState<ProjectView[]>([]),
+    [w, setW] = useState<Workspace | null>(null),
+    [page, setPage] = useState("dashboard"),
+    [contentId, setContentId] = useState(""),
+    [search, setSearch] = useState(""),
+    [toast, setToast] = useState(""),
+    [busy, setBusy] = useState(false),
+    [newTitle, setNewTitle] = useState<string | null>(null),
+    [showProjects, setShowProjects] = useState(false),
+    [assistant, setAssistant] = useState(true),
+    [codex, setCodex] = useState<CodexStatus>({
+      state: "disconnected",
+      message: "尚未连接",
+      version: "",
+      models: [],
+    }),
+    [progress, setProgress] = useState("");
+  const wRef = useRef(w),
+    guard = useRef<() => Promise<boolean>>(async () => true);
+  wRef.current = w;
+  const notice = (message: string) => setToast(message);
+  const run = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+    try {
+      setBusy(true);
+      return await fn();
+    } catch (e) {
+      notice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const refresh = async () => {
+    const id = wRef.current?.project.id;
+    if (!id) return;
+    const next = await api.call<Workspace>("project.load", { projectId: id });
+    if (wRef.current?.project.id === id) setW(next);
+  };
+  useEffect(() => {
+    void api
+      .call<{ recent: ProjectView[]; codex: CodexStatus }>("app.bootstrap")
+      .then((r) => {
+        setRecent(r.recent);
+        setCodex(r.codex);
+      })
+      .catch((e) => notice(e.message));
+    return api.onEvent((e) => {
+      if (e.type === "codex-status")
+        void api.call<CodexStatus>("codex.status").then(setCodex);
+      if (e.type === "run-status" && e.projectId === wRef.current?.project.id)
+        void refresh();
+      if (e.type === "import-progress") setProgress(e.message ?? "");
+    });
+  }, []);
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(""), 6500);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+  const navigate = async (next: string, id?: string) => {
+    if (!(await guard.current())) return;
+    setPage(next);
+    if (id !== undefined) setContentId(id);
+    setSearch("");
+  };
+  const openProject = async (p?: string) => {
+    if (!(await guard.current())) return;
+    await run(async () => {
+      const next = await api.call<Workspace | null>(
+        "project.open",
+        p ? { path: p } : {},
+      );
+      if (next) {
+        setW(next);
+        setRecent(
+          (await api.call<{ recent: ProjectView[] }>("app.bootstrap")).recent,
+        );
+        setPage("dashboard");
+        setContentId("");
+        setShowProjects(false);
+        setProgress("");
+      }
+    });
+  };
+  const create = async () => {
+    if (newTitle === null || !w) return;
+    await run(async () => {
+      const c = await api.call<Content>("content.create", {
+        projectId: w.project.id,
+        title: newTitle,
+      });
+      setNewTitle(null);
+      await refresh();
+      await navigate("editor", c.id);
+    });
+  };
+  const nav = [
+    { id: "dashboard", label: "工作台", icon: LayoutDashboard },
+    { id: "contents", label: "内容库", icon: Files },
+    { id: "assets", label: "素材库", icon: ImageIcon },
+    { id: "calendar", label: "发布日历", icon: CalendarDays },
+    { id: "records", label: "发布记录", icon: Send },
+    { id: "accounts", label: "账号与定位", icon: Users },
+  ];
+  const pending =
+    w?.jobs.filter((j) => !["completed", "cancelled"].includes(j.status)) ?? [];
+  const content = w?.contents.find((c) => c.id === contentId);
+  return (
+    <div className={`app ${w ? "" : "welcome-app"}`} aria-busy={busy}>
+      <aside className="sidebar">
+        <div className="wordmark">
+          <div className="brand-icon">
+            <Files size={21} />
+          </div>
+          <div>
+            内容工作台<small>CONTENT WORKBENCH</small>
+          </div>
+        </div>
+        <button
+          className="project-switch"
+          onClick={() => setShowProjects(!showProjects)}
+        >
+          <div
+            className={`avatar ${w?.project.identityType === "founder" ? "founder" : ""}`}
+          >
+            {w ? initials(w.project.name) : <Folder size={18} />}
+          </div>
+          <span>
+            {w?.project.name ?? "选择账号项目"}
+            <small>
+              {w
+                ? w.project.identityType === "founder"
+                  ? "创始人 IP"
+                  : "品牌官号"
+                : "从本地文件夹开始"}
+            </small>
+          </span>
+          <ChevronDown size={15} />
+        </button>
+        {showProjects && (
+          <div className="project-menu">
+            {recent.map((p) => (
+              <button key={p.id} onClick={() => void openProject(p.root)}>
+                <span className="avatar small">{initials(p.name)}</span>
+                <span>
+                  {p.name}
+                  <small>{p.root}</small>
+                </span>
+              </button>
+            ))}
+            <button onClick={() => void openProject()}>
+              <Plus size={16} />
+              打开其他文件夹
+            </button>
+          </div>
+        )}
+        <span className="nav-caption">工作空间</span>
+        <nav>
+          {nav.map((n) => (
+            <button
+              disabled={!w}
+              key={n.id}
+              className={
+                page === n.id || (n.id === "contents" && page === "editor")
+                  ? "active"
+                  : ""
+              }
+              onClick={() => void navigate(n.id)}
+            >
+              <n.icon size={18} />
+              <span>{n.label}</span>
+              {n.id === "calendar" && pending.length > 0 && (
+                <em>{pending.length}</em>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="local-note">
+            <span className="dot" />
+            <span>
+              本地优先<small>文件和素材由你掌握</small>
+            </span>
+          </div>
+          <button
+            disabled={!w}
+            className={page === "settings" ? "active" : ""}
+            onClick={() => void navigate("settings")}
+          >
+            <Settings size={18} />
+            设置与备份
+          </button>
+          <div className="version">v0.1 · 辅助发布</div>
+        </div>
+      </aside>
+      <div className="workspace">
+        <header className="topbar">
+          <div className="breadcrumb">
+            {w?.project.name ?? "欢迎使用"}
+            <ChevronRight size={14} />
+            <strong>
+              {page === "editor"
+                ? "内容编辑"
+                : (nav.find((n) => n.id === page)?.label ?? "设置与备份")}
+            </strong>
+          </div>
+          <div className="topbar-right">
+            <span className="local-pill">
+              <span className="dot" />
+              本地工作空间
+            </span>
+            {w && (
+              <button
+                className="icon"
+                aria-label="打开项目文件夹"
+                onClick={() =>
+                  void run(() =>
+                    api.call("project.reveal", { projectId: w.project.id }),
+                  )
+                }
+              >
+                <FolderOpen size={18} />
+              </button>
+            )}
+            {page === "editor" && (
+              <button
+                className="icon"
+                aria-label="切换 Codex 面板"
+                onClick={() => setAssistant(!assistant)}
+              >
+                {assistant ? (
+                  <PanelRightClose size={18} />
+                ) : (
+                  <PanelRightOpen size={18} />
+                )}
+              </button>
+            )}
+          </div>
+        </header>
+        {w?.project.readOnly && (
+          <div className="warning-banner">
+            {w.project.warning ?? "此项目只读"} · 可浏览，无法保存
+          </div>
+        )}
+        {!w ? (
+          <main className="welcome">
+            <div className="eyebrow">YOUR CONTENT, YOUR SPACE</div>
+            <h1>
+              让好内容，
+              <br />
+              <span>有条不紊地发生。</span>
+            </h1>
+            <p>
+              官号与创始人 IP，各有自己的工作空间。
+              <br />
+              从一份素材开始，走到每个平台的发布记录。
+            </p>
+            <button
+              className="primary large"
+              onClick={() => void openProject()}
+            >
+              <FolderOpen size={19} />
+              打开本地文件夹
+            </button>
+            <small className="hint">
+              可选择已有素材目录，或在选择器中新建空文件夹。
+            </small>
+            <div className="welcome-features">
+              <span>
+                <Folder size={17} />
+                普通文件夹
+              </span>
+              <span>
+                <Sparkles size={17} />
+                本机 Codex
+              </span>
+              <span>
+                <Send size={17} />9 个平台辅助发布
+              </span>
+            </div>
+            {recent.length > 0 && (
+              <section className="recent-projects">
+                <h3>最近项目</h3>
+                {recent.map((p) => (
+                  <button key={p.id} onClick={() => void openProject(p.root)}>
+                    <div className="avatar">{initials(p.name)}</div>
+                    <span>
+                      {p.name}
+                      <small>{p.root}</small>
+                    </span>
+                    <ArrowRight size={17} />
+                  </button>
+                ))}
+              </section>
+            )}
+          </main>
+        ) : page === "editor" && content ? (
+          <div className={`editor-layout ${assistant ? "" : "no-assistant"}`}>
+            <Editor
+              key={w.project.id + content.id}
+              w={w}
+              content={content}
+              refresh={refresh}
+              notice={notice}
+              guard={guard}
+              onBack={() => void navigate("contents")}
+            />
+            {assistant && (
+              <Assistant
+                w={w}
+                content={content}
+                codex={codex}
+                setCodex={setCodex}
+                refresh={refresh}
+                guard={guard}
+                notice={notice}
+              />
+            )}
+          </div>
+        ) : (
+          <main className="main-scroll">
+            {page === "dashboard" && (
+              <>
+                <div className="page-heading">
+                  <div>
+                    <div className="eyebrow">工作台 / OVERVIEW</div>
+                    <h1>把想法，变成下一条内容。</h1>
+                    <p>这里是 {w.project.name} 的内容工作空间。</p>
+                  </div>
+                  <button className="primary" onClick={() => setNewTitle("")}>
+                    <Plus size={17} />
+                    新建内容
+                  </button>
+                </div>
+                <div className="stats">
+                  <div>
+                    <span>内容主题</span>
+                    <strong>
+                      {w.contents.length}
+                      <small>篇</small>
+                    </strong>
+                    <Files size={21} />
+                  </div>
+                  <div>
+                    <span>可用素材</span>
+                    <strong>
+                      {
+                        w.assets.filter((a) => a.availability === "available")
+                          .length
+                      }
+                      <small>份</small>
+                    </strong>
+                    <ImageIcon size={21} />
+                  </div>
+                  <div>
+                    <span>待完成发布</span>
+                    <strong>
+                      {pending.length}
+                      <small>项</small>
+                    </strong>
+                    <Clock size={21} />
+                  </div>
+                  <div>
+                    <span>已完成发布</span>
+                    <strong>
+                      {w.jobs.filter((j) => j.status === "completed").length}
+                      <small>项</small>
+                    </strong>
+                    <CheckCircle2 size={21} />
+                  </div>
+                </div>
+                <div className="dashboard-columns">
+                  <section className="card">
+                    <div className="section-heading">
+                      <h2>
+                        最近内容 <span>RECENT CONTENT</span>
+                      </h2>
+                      <button
+                        className="text-button"
+                        onClick={() => void navigate("contents")}
+                      >
+                        查看全部 <ArrowRight size={14} />
+                      </button>
+                    </div>
+                    {w.contents.length ? (
+                      w.contents
+                        .slice(0, 5)
+                        .map((c) => (
+                          <ContentRow
+                            key={c.id}
+                            c={c}
+                            w={w}
+                            onOpen={() => void navigate("editor", c.id)}
+                          />
+                        ))
+                    ) : (
+                      <Empty
+                        title="第一条内容，从这里开始"
+                        text="创建主题，整理事实，再写出各平台的表达。"
+                        action={
+                          <button
+                            className="secondary"
+                            onClick={() => setNewTitle("")}
+                          >
+                            <Plus size={16} />
+                            创建内容主题
+                          </button>
+                        }
+                      />
+                    )}
+                  </section>
+                  <section className="card">
+                    <div className="section-heading">
+                      <h2>
+                        接下来发布 <span>UP NEXT</span>
+                      </h2>
+                    </div>
+                    {pending.length ? (
+                      pending.slice(0, 4).map((j) => (
+                        <button
+                          className="upcoming"
+                          key={j.id}
+                          onClick={() => void navigate("records")}
+                        >
+                          <span className="date-tile">
+                            {new Date(j.scheduledAtUtc).getDate()}
+                            <small>
+                              {new Date(j.scheduledAtUtc).getMonth() + 1}月
+                            </small>
+                          </span>
+                          <span>
+                            <strong>{j.title}</strong>
+                            <small>
+                              {j.targetLabel} ·{" "}
+                              {formatTime(j.scheduledAtUtc, j.timezone)}
+                            </small>
+                            <Badge platform={j.platform} />
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <Empty
+                        icon={CalendarDays}
+                        title="还没有发布安排"
+                        text="草稿就绪后，为每个目标安排人工截止时间。"
+                      />
+                    )}
+                  </section>
+                </div>
+                <section className="journey">
+                  <div className="journey-mark">
+                    <Sparkles size={23} />
+                  </div>
+                  <div>
+                    <h3>从素材到发布，留下一条完整记录</h3>
+                    <p>
+                      素材导入 <span>→</span> 平台草稿 <span>→</span>{" "}
+                      排期与发布包 <span>→</span> 人工回填
+                    </p>
+                  </div>
+                  <span className="pill">所有内容保存在本地</span>
+                </section>
+              </>
+            )}
+            {page === "contents" && (
+              <>
+                <div className="page-heading">
+                  <div>
+                    <div className="eyebrow">CONTENT LIBRARY</div>
+                    <h1>
+                      内容库 <span className="count">{w.contents.length}</span>
+                    </h1>
+                    <p>一个主题，延展成各个平台的表达。</p>
+                  </div>
+                  <button className="primary" onClick={() => setNewTitle("")}>
+                    <Plus size={17} />
+                    新建内容
+                  </button>
+                </div>
+                <div className="toolbar">
+                  <div className="search">
+                    <Search size={16} />
+                    <input
+                      placeholder="搜索标题或正文"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <span className="muted">独立版本 · 本地保存</span>
+                </div>
+                <div className="card">
+                  {w.contents
+                    .filter((c) =>
+                      (c.title + c.variants.map((v) => v.body).join(""))
+                        .toLowerCase()
+                        .includes(search.toLowerCase()),
+                    )
+                    .map((c) => (
+                      <ContentRow
+                        key={c.id}
+                        c={c}
+                        w={w}
+                        onOpen={() => void navigate("editor", c.id)}
+                      />
+                    ))}
+                  {!w.contents.length && (
+                    <Empty
+                      title="还没有内容主题"
+                      text="选题、事实底稿和平台版本会集中保存在这里。"
+                    />
+                  )}
+                </div>
+              </>
+            )}
+            {page === "assets" && (
+              <Assets
+                w={w}
+                refresh={refresh}
+                notice={notice}
+                progress={progress}
+              />
+            )}
+            {page === "accounts" && (
+              <Accounts w={w} refresh={refresh} notice={notice} />
+            )}
+            {page === "calendar" && (
+              <Calendar
+                w={w}
+                refresh={refresh}
+                notice={notice}
+                onRecords={() => void navigate("records")}
+              />
+            )}
+            {page === "records" && (
+              <Records w={w} refresh={refresh} notice={notice} />
+            )}
+            {page === "settings" && (
+              <SettingsPage
+                w={w}
+                codex={codex}
+                setCodex={setCodex}
+                notice={notice}
+                onRestore={(next) => {
+                  setW(next);
+                  setPage("dashboard");
+                }}
+              />
+            )}
+          </main>
+        )}
+      </div>
+      {toast && (
+        <div className="toast" role="status">
+          <AlertCircle size={18} />
+          {toast}
+          <button
+            aria-label="关闭提示"
+            className="icon"
+            onClick={() => setToast("")}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      {busy && <div className="busy-line" />}
+      {newTitle !== null && (
+        <Modal title="新建内容主题" onClose={() => setNewTitle(null)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void create();
+            }}
+          >
+            <label>
+              主题名称
+              <input
+                autoFocus
+                required
+                placeholder="例如：一个值得分享的项目进展"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+              />
+            </label>
+            <p className="hint">先确定一个主题，再添加不同平台和语言版本。</p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setNewTitle(null)}
+              >
+                取消
+              </button>
+              <button className="primary" disabled={busy}>
+                创建主题
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+function ContentRow({
+  c,
+  w,
+  onOpen,
+}: {
+  c: Content;
+  w: Workspace;
+  onOpen: () => void;
+}) {
+  const v = c.variants[0];
+  const a = w.assets.find((a) => a.id === (v?.coverId ?? v?.assetIds[0]));
+  return (
+    <button className="content-row" onClick={onOpen}>
+      <div className="content-thumb">
+        {a?.kind === "image" ? (
+          <img src={mediaUrl(w.project.id, a)} alt="" loading="lazy" />
+        ) : (
+          <Files size={22} />
+        )}
+      </div>
+      <div className="content-summary">
+        <h3>{c.title}</h3>
+        <p>
+          {c.variants.length} 个平台版本 <span>·</span>{" "}
+          {new Date(c.updatedAt).toLocaleDateString("zh-CN")}
+        </p>
+        <div className="badges">
+          {[...new Set(c.variants.map((v) => v.platform))].map((p) => (
+            <Badge key={p} platform={p} />
+          ))}
+        </div>
+      </div>
+      <span className={`state ${v?.readiness === "ready" ? "green" : ""}`}>
+        {v?.readiness === "ready" ? "已就绪" : "草稿"}
+      </span>
+      <ChevronRight size={16} />
+    </button>
+  );
+}
+type Common = {
+  w: Workspace;
+  refresh: () => Promise<void>;
+  notice: (s: string) => void;
+};
+function Editor({
+  w,
+  content,
+  refresh,
+  notice,
+  guard,
+  onBack,
+}: Common & {
+  content: Content;
+  guard: React.MutableRefObject<() => Promise<boolean>>;
+  onBack: () => void;
+}) {
+  const [vid, setVid] = useState(content.variants[0]?.id ?? ""),
+    [draft, setDraft] = useState<Variant | null>(content.variants[0] ?? null),
+    [dirty, setDirty] = useState(false),
+    [saving, setSaving] = useState(false),
+    [brief, setBrief] = useState(content.brief),
+    [audience, setAudience] = useState(content.audience),
+    [objective, setObjective] = useState(content.objective),
+    [add, setAdd] = useState(false),
+    [platform, setPlatform] = useState<Platform>("xiaohongshu"),
+    [locale, setLocale] = useState("zh-CN"),
+    [selectAssets, setSelectAssets] = useState(false),
+    [schedule, setSchedule] = useState(false),
+    [history, setHistory] = useState<Content[] | null>(null),
+    [conflict, setConflict] = useState<any>(null);
+  const current = content.variants.find((v) => v.id === vid);
+  const ref = useRef({ draft, dirty, current, brief, audience, objective });
+  ref.current = { draft, dirty, current, brief, audience, objective };
+  useEffect(() => {
+    if (!dirty && current) {
+      setDraft(current);
+      setBrief(content.brief);
+      setAudience(content.audience);
+      setObjective(content.objective);
+    }
+    if (!vid && content.variants.length) {
+      setVid(content.variants[0].id);
+      setDraft(content.variants[0]);
+    }
+  }, [content]);
+  async function save(ready?: boolean) {
+    const state = ref.current;
+    if (!state.draft) return true;
+    if (!state.dirty && ready === undefined) return true;
+    setSaving(true);
+    try {
+      const next = await api.call<Content>("content.save", {
+        projectId: w.project.id,
+        contentId: content.id,
+        variant: {
+          ...state.draft,
+          readiness: ready ? "ready" : state.draft.readiness,
+        },
+        baseRevision: state.draft.revision,
+        baseHash: state.draft.bodyHash ?? "",
+        brief: state.brief,
+        audience: state.audience,
+        objective: state.objective,
+      });
+      setDraft(next.variants.find((v) => v.id === vid) ?? null);
+      setDirty(false);
+      await refresh();
+      if (
+        ready &&
+        next.variants.find((v) => v.id === vid)?.readiness !== "ready"
+      )
+        notice("修改已保存，请再次标记就绪以确认新版本");
+      return true;
+    } catch (e) {
+      if ((e as any).code === "REVISION_CONFLICT")
+        setConflict((e as any).details);
+      notice((e as Error).message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+  useEffect(() => {
+    guard.current = () => save();
+    return () => {
+      guard.current = async () => true;
+    };
+  }, [vid, content, w.project.id]);
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (ref.current.dirty) {
+        e.preventDefault();
+        e.returnValue = "草稿尚未保存";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+  const change = (patch: Partial<Variant>) => {
+    if (!draft) return;
+    setDraft({ ...draft, ...patch, readiness: "draft" });
+    setDirty(true);
+  };
+  const changeVariant = async (id: string) => {
+    if (await save()) {
+      setVid(id);
+      setDraft(content.variants.find((v) => v.id === id) ?? null);
+    }
+  };
+  const call = async (fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+    } catch (e) {
+      notice((e as Error).message);
+    }
+  };
+  const bindings =
+    draft?.assetIds
+      .map((id) => w.assets.find((a) => a.id === id))
+      .filter((a): a is Asset => !!a) ?? [];
+  const reorder = (index: number, direction: number) => {
+    if (!draft) return;
+    const ids = [...draft.assetIds];
+    [ids[index], ids[index + direction]] = [ids[index + direction], ids[index]];
+    change({ assetIds: ids });
+  };
+  return (
+    <div className="editor-main">
+      <div className="editor-heading">
+        <button className="text-button" onClick={onBack}>
+          <ChevronLeft size={15} />
+          内容库
+        </button>
+        <div className={`save-state ${dirty ? "unsaved" : ""}`}>
+          <span className="dot" />
+          {saving ? "保存中" : dirty ? "有未保存修改" : "已保存到本地"}
+        </div>
+      </div>
+      <div className="editor-title">
+        <h1>{content.title}</h1>
+        <p>内容主题 / {content.variants.length} 个独立版本</p>
+      </div>
+      <div className="variant-tabs">
+        {content.variants.map((v) => (
+          <button
+            key={v.id}
+            className={v.id === vid ? "selected" : ""}
+            onClick={() => void changeVariant(v.id)}
+          >
+            <span
+              style={{ background: platformColor[v.platform] }}
+              className="platform-dot"
+            />
+            {platformNames[v.platform]}
+            <small>{v.locale.startsWith("en") ? "EN" : "中文"}</small>
+          </button>
+        ))}
+        <button className="add-variant" onClick={() => setAdd(true)}>
+          <Plus size={16} />
+          添加版本
+        </button>
+      </div>
+      {!draft ? (
+        <Empty
+          icon={Files}
+          title="为主题添加第一个平台版本"
+          text="每个平台的语言、正文和媒体顺序独立保存。"
+          action={
+            <button className="primary" onClick={() => setAdd(true)}>
+              <Plus size={16} />
+              添加版本
+            </button>
+          }
+        />
+      ) : (
+        <div className="editor-scroll">
+          <details className="brief-panel">
+            <summary>
+              事实底稿与内容目标 <span>为 AI 提供可靠的上下文</span>
+            </summary>
+            <div className="two-col">
+              <label>
+                目标受众
+                <input
+                  value={audience}
+                  onChange={(e) => {
+                    setAudience(e.target.value);
+                    setDirty(true);
+                  }}
+                />
+              </label>
+              <label>
+                目标行动
+                <input
+                  value={objective}
+                  onChange={(e) => {
+                    setObjective(e.target.value);
+                    setDirty(true);
+                  }}
+                />
+              </label>
+            </div>
+            <label>
+              事实底稿
+              <textarea
+                rows={4}
+                value={brief}
+                onChange={(e) => {
+                  setBrief(e.target.value);
+                  setDirty(true);
+                }}
+                placeholder="只填已经确认的事实、数据或个人观察"
+              />
+            </label>
+          </details>
+          <div className="compose-grid">
+            <div className="compose-fields">
+              <div className="section-heading">
+                <h2>编辑文案</h2>
+                <span
+                  className={`state ${draft.readiness === "ready" ? "green" : ""}`}
+                >
+                  {draft.readiness === "ready" ? "已就绪" : "草稿"} · r
+                  {draft.revision}
+                </span>
+              </div>
+              <label>
+                标题
+                <input
+                  aria-label="版本标题"
+                  value={draft.title}
+                  onChange={(e) => change({ title: e.target.value })}
+                />
+              </label>
+              <label>
+                正文
+                <textarea
+                  className="body-editor"
+                  aria-label="版本正文"
+                  value={draft.body}
+                  onChange={(e) => change({ body: e.target.value })}
+                  placeholder="写下值得被看见的内容，或请右侧 Codex 帮你起草…"
+                />
+              </label>
+              <div className="field-footer">
+                <span>支持中文与英文</span>
+                <span>{[...draft.body].length} 字符</span>
+              </div>
+              <label>
+                话题标签
+                <input
+                  value={draft.tags.join(" ")}
+                  onChange={(e) =>
+                    change({
+                      tags: e.target.value
+                        .split(/\s+/)
+                        .map((t) => t.replace(/^#/, ""))
+                        .filter(Boolean),
+                    })
+                  }
+                  placeholder="用空格分隔话题"
+                />
+              </label>
+              <div className="section-heading media-heading">
+                <h2>
+                  关联素材 <span>{bindings.length}</span>
+                </h2>
+                <button
+                  className="text-button"
+                  onClick={() => setSelectAssets(true)}
+                >
+                  <Plus size={15} />
+                  选择素材
+                </button>
+              </div>
+              <div className="bindings">
+                {bindings.map((a, i) => (
+                  <div className="binding" key={a.id}>
+                    <div className="binding-thumb">
+                      {a.kind === "image" ? (
+                        <img src={mediaUrl(w.project.id, a)} alt={a.name} />
+                      ) : (
+                        <Play size={18} />
+                      )}
+                    </div>
+                    <div>
+                      <strong>{a.name}</strong>
+                      <small>
+                        {i + 1} · {a.kind === "image" ? "图片" : "视频"}
+                        {draft.coverId === a.id ? " · 封面" : ""}
+                      </small>
+                    </div>
+                    <div className="binding-actions">
+                      <button
+                        className="icon"
+                        disabled={i === 0}
+                        aria-label={`上移素材 ${i + 1}`}
+                        onClick={() => reorder(i, -1)}
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        className="icon"
+                        disabled={i === bindings.length - 1}
+                        aria-label={`下移素材 ${i + 1}`}
+                        onClick={() => reorder(i, 1)}
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      {a.kind === "image" && (
+                        <button
+                          className="icon"
+                          title="设为封面"
+                          aria-label={`设置封面 ${i + 1}`}
+                          onClick={() => change({ coverId: a.id })}
+                        >
+                          <ImageIcon size={14} />
+                        </button>
+                      )}
+                      <button
+                        className="icon"
+                        aria-label={`移除关联 ${i + 1}`}
+                        onClick={() =>
+                          change({
+                            assetIds: draft.assetIds.filter(
+                              (id) => id !== a.id,
+                            ),
+                            coverId:
+                              draft.coverId === a.id ? null : draft.coverId,
+                          })
+                        }
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {!bindings.length && (
+                  <button
+                    className="asset-empty"
+                    onClick={() => setSelectAssets(true)}
+                  >
+                    <ImageIcon size={23} />
+                    选择图片、视频或关键帧
+                  </button>
+                )}
+              </div>
+              {draft.platform === "wechat" && (
+                <div className="segments">
+                  <div className="section-heading">
+                    <h2>群消息顺序</h2>
+                    <span className="muted">
+                      {draft.segments.length || "自动"} 段
+                    </span>
+                  </div>
+                  <p className="hint">
+                    未自定义时，按正文、关联素材顺序生成。已发送的每一段可独立记录。
+                  </p>
+                  {draft.segments.map((s, i) => (
+                    <div className="segment" key={i}>
+                      <span className="segment-index">{i + 1}</span>
+                      <div>
+                        {s.type === "text" ? (
+                          <textarea
+                            aria-label={`第 ${i + 1} 段文字`}
+                            rows={2}
+                            value={s.text}
+                            onChange={(e) =>
+                              change({
+                                segments: draft.segments.map((x, n) =>
+                                  n === i
+                                    ? { type: "text", text: e.target.value }
+                                    : x,
+                                ),
+                              })
+                            }
+                          />
+                        ) : s.type === "link" ? (
+                          <input
+                            aria-label={`第 ${i + 1} 段链接`}
+                            value={s.url}
+                            onChange={(e) =>
+                              change({
+                                segments: draft.segments.map((x, n) =>
+                                  n === i
+                                    ? {
+                                        type: "link",
+                                        url: e.target.value,
+                                        label: "链接",
+                                      }
+                                    : x,
+                                ),
+                              })
+                            }
+                          />
+                        ) : (
+                          <span>
+                            {s.type === "image" ? "图片" : "视频"} ·{" "}
+                            {w.assets.find((a) => a.id === s.assetId)?.name}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        className="icon"
+                        disabled={i === 0}
+                        aria-label={`上移消息段 ${i + 1}`}
+                        onClick={() => {
+                          const segments = [...draft.segments];
+                          [segments[i - 1], segments[i]] = [
+                            segments[i],
+                            segments[i - 1],
+                          ];
+                          change({ segments });
+                        }}
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+                      <button
+                        className="icon"
+                        aria-label={`删除消息段 ${i + 1}`}
+                        onClick={() =>
+                          change({
+                            segments: draft.segments.filter((_, n) => i !== n),
+                          })
+                        }
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="button-row">
+                    <button
+                      className="secondary small-button"
+                      onClick={() =>
+                        change({
+                          segments: [
+                            ...draft.segments,
+                            { type: "text", text: "" },
+                          ],
+                        })
+                      }
+                    >
+                      <Plus size={14} />
+                      文字段
+                    </button>
+                    <button
+                      className="secondary small-button"
+                      onClick={() =>
+                        change({
+                          segments: [
+                            ...draft.segments,
+                            { type: "link", url: "https://", label: "链接" },
+                          ],
+                        })
+                      }
+                    >
+                      <Link size={14} />
+                      链接
+                    </button>
+                    <button
+                      className="secondary small-button"
+                      disabled={!bindings.length}
+                      onClick={() =>
+                        change({
+                          segments: [
+                            ...draft.segments,
+                            ...bindings.map((a) => ({
+                              type: a.kind,
+                              assetId: a.id,
+                            })),
+                          ],
+                        })
+                      }
+                    >
+                      加入已选媒体
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="preview-column">
+              <div className="preview-label">
+                <span>内容预览</span>
+                <Badge platform={draft.platform} />
+              </div>
+              <div className="post-preview">
+                <div className="preview-account">
+                  <div className="avatar small">{initials(w.project.name)}</div>
+                  <div>
+                    <strong>{w.project.name}</strong>
+                    <small>
+                      {draft.locale === "en" ? "English" : "简体中文"} ·
+                      内容布局示意
+                    </small>
+                  </div>
+                  <MoreHorizontal size={17} />
+                </div>
+                {bindings.length > 0 && (
+                  <div className="preview-media">
+                    {bindings[0].kind === "image" ? (
+                      <img
+                        alt="内容预览"
+                        src={mediaUrl(w.project.id, bindings[0])}
+                      />
+                    ) : (
+                      <video
+                        src={mediaUrl(w.project.id, bindings[0])}
+                        poster={
+                          w.assets.find((a) => a.id === draft.coverId)
+                            ? mediaUrl(
+                                w.project.id,
+                                w.assets.find((a) => a.id === draft.coverId)!,
+                              )
+                            : undefined
+                        }
+                        controls
+                        preload="metadata"
+                      />
+                    )}
+                    {bindings.length > 1 && (
+                      <span className="media-count">1 / {bindings.length}</span>
+                    )}
+                  </div>
+                )}
+                <div className="preview-copy">
+                  <h3>{draft.title}</h3>
+                  <p>{draft.body || "正文预览会显示在这里。"}</p>
+                  <div className="hashtags">
+                    {draft.tags.map((t) => "#" + t).join(" ")}
+                  </div>
+                </div>
+              </div>
+              <p className="hint centered">平台最终排版以实际客户端为准</p>
+              <div className="preview-guidance">
+                <CheckCircle2 size={16} />
+                <p>发布安排会固定当前文案与媒体。后续编辑会保留原任务快照。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {draft && (
+        <div className="editor-footer">
+          <button
+            className="text-button"
+            onClick={() =>
+              void call(async () =>
+                setHistory(
+                  await api.call<Content[]>("content.histories", {
+                    projectId: w.project.id,
+                    contentId: content.id,
+                    variantId: vid,
+                  }),
+                ),
+              )
+            }
+          >
+            <Clock size={16} />
+            版本历史
+          </button>
+          <div className="button-row">
+            <button
+              className="secondary"
+              disabled={saving || w.project.readOnly}
+              onClick={() => void save()}
+            >
+              <Check size={16} />
+              保存草稿
+            </button>
+            <button
+              className="secondary"
+              disabled={saving || w.project.readOnly}
+              onClick={() => void save(true)}
+            >
+              标记就绪
+            </button>
+            <button
+              className="primary"
+              disabled={
+                dirty || draft.readiness !== "ready" || w.project.readOnly
+              }
+              onClick={() => setSchedule(true)}
+            >
+              <CalendarDays size={16} />
+              安排发布
+            </button>
+          </div>
+        </div>
+      )}
+      {add && (
+        <Modal title="添加平台版本" onClose={() => setAdd(false)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void call(async () => {
+                if (!(await save())) return;
+                const c = await api.call<Content>("content.addVariant", {
+                  projectId: w.project.id,
+                  contentId: content.id,
+                  platform,
+                  locale,
+                });
+                setVid(c.variants.at(-1)!.id);
+                setDraft(c.variants.at(-1)!);
+                setDirty(false);
+                setAdd(false);
+                await refresh();
+              });
+            }}
+          >
+            <label>
+              平台
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value as Platform)}
+              >
+                {platforms.map((p) => (
+                  <option key={p} value={p}>
+                    {platformNames[p]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              语言
+              <select
+                value={locale}
+                onChange={(e) => setLocale(e.target.value)}
+              >
+                <option value="zh-CN">简体中文</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <div className="modal-actions">
+              <button className="primary">添加版本</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {selectAssets && draft && (
+        <Modal wide title="关联项目素材" onClose={() => setSelectAssets(false)}>
+          <div className="asset-picker">
+            {w.assets
+              .filter((a) => a.availability === "available")
+              .map((a) => (
+                <button
+                  key={a.id}
+                  className={`asset-pick ${draft.assetIds.includes(a.id) ? "selected" : ""}`}
+                  onClick={() =>
+                    change({
+                      assetIds: draft.assetIds.includes(a.id)
+                        ? draft.assetIds.filter((id) => id !== a.id)
+                        : [...draft.assetIds, a.id],
+                    })
+                  }
+                >
+                  {a.kind === "image" ? (
+                    <img
+                      src={mediaUrl(w.project.id, a)}
+                      alt={a.name}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="video-tile">
+                      <Play size={28} />
+                    </div>
+                  )}
+                  <span>{a.name}</span>
+                  {draft.assetIds.includes(a.id) && (
+                    <em>
+                      <Check size={14} />
+                    </em>
+                  )}
+                </button>
+              ))}
+          </div>
+          {!w.assets.length && (
+            <Empty
+              icon={ImageIcon}
+              title="素材库还空着"
+              text="先到素材库导入图片或视频，再关联到此版本。"
+            />
+          )}
+          <div className="modal-actions">
+            <button className="primary" onClick={() => setSelectAssets(false)}>
+              完成选择
+            </button>
+          </div>
+        </Modal>
+      )}
+      {schedule && draft && (
+        <ScheduleModal
+          w={w}
+          content={content}
+          variant={draft}
+          onClose={() => setSchedule(false)}
+          onDone={async () => {
+            setSchedule(false);
+            await refresh();
+            notice("已创建逐目标任务，可在发布记录中导出和回填");
+          }}
+          notice={notice}
+        />
+      )}
+      {history && draft && (
+        <Modal
+          wide
+          title="版本历史 · 恢复为新草稿"
+          onClose={() => setHistory(null)}
+        >
+          {history.map((c, i) => {
+            const v = c.variants.find((v) => v.id === vid);
+            return (
+              v && (
+                <div className="history" key={i}>
+                  <div>
+                    <strong>r{v.revision}</strong>
+                    <span>{new Date(c.updatedAt).toLocaleString()}</span>
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        change({
+                          title: v.title,
+                          body: v.body,
+                          tags: v.tags,
+                          assetIds: v.assetIds,
+                          coverId: v.coverId,
+                          segments: v.segments,
+                        });
+                        setHistory(null);
+                      }}
+                    >
+                      恢复到编辑器
+                    </button>
+                  </div>
+                  <pre>{v.body}</pre>
+                </div>
+              )
+            );
+          })}
+          {!history.length && <p>保存修改后，旧版本会出现在这里。</p>}
+        </Modal>
+      )}
+      {conflict && (
+        <Modal
+          wide
+          title="修改冲突 · 两份内容均已保留"
+          onClose={() => setConflict(null)}
+        >
+          <div className="two-col">
+            <div>
+              <h3>磁盘当前内容</h3>
+              <pre className="diff">{conflict.current.body}</pre>
+            </div>
+            <div>
+              <h3>你的未提交内容</h3>
+              <pre className="diff">{conflict.proposed.body}</pre>
+            </div>
+          </div>
+          <p className="hint">
+            加载当前版本后，可将需要保留的段落合并到正文再保存。
+          </p>
+          <div className="modal-actions">
+            <button
+              className="secondary"
+              onClick={() => {
+                void navigator.clipboard.writeText(conflict.proposed.body);
+                notice("已复制你的未提交内容");
+              }}
+            >
+              复制未提交内容
+            </button>
+            <button
+              className="primary"
+              onClick={() =>
+                void call(async () => {
+                  setDirty(false);
+                  setDraft(conflict.current);
+                  setConflict(null);
+                  await refresh();
+                })
+              }
+            >
+              加载磁盘版本
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+function ScheduleModal({
+  w,
+  content,
+  variant,
+  onClose,
+  onDone,
+  notice,
+}: {
+  w: Workspace;
+  content: Content;
+  variant: Variant;
+  onClose: () => void;
+  onDone: () => Promise<void>;
+  notice: (s: string) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>([]),
+    [date, setDate] = useState(localInput()),
+    [busy, setBusy] = useState(false);
+  const accounts = w.accounts.filter(
+    (a) => a.platform === variant.platform && a.enabled,
+  );
+  const targets = w.targets.filter(
+    (t) => t.enabled && accounts.some((a) => a.id === t.accountId),
+  );
+  return (
+    <Modal title="安排辅助发布" onClose={onClose}>
+      <div className="snapshot-note">
+        <Badge platform={variant.platform} />
+        <strong>{variant.title}</strong>
+        <small>将固定 r{variant.revision} 的正文与媒体</small>
+      </div>
+      <label>
+        人工截止时间（本机时区：
+        {Intl.DateTimeFormat().resolvedOptions().timeZone}）
+        <input
+          type="datetime-local"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+        />
+      </label>
+      <p className="hint">
+        记录为 UTC，按项目时区 {w.project.timezone} 展示。到期后由你人工发布。
+      </p>
+      <label>发布目标</label>
+      <div className="target-list">
+        {targets.map((t) => (
+          <label key={t.id} className="check-row">
+            <input
+              type="checkbox"
+              checked={selected.includes(t.id)}
+              onChange={(e) =>
+                setSelected(
+                  e.target.checked
+                    ? [...selected, t.id]
+                    : selected.filter((id) => id !== t.id),
+                )
+              }
+            />
+            <span>
+              {t.label}
+              <small>{accounts.find((a) => a.id === t.accountId)?.label}</small>
+            </span>
+          </label>
+        ))}
+      </div>
+      {!targets.length && (
+        <p className="warning-text">
+          请先在“账号与定位”登记此平台的发送账号及目标。
+        </p>
+      )}
+      <div className="modal-actions">
+        <button className="secondary" onClick={onClose}>
+          取消
+        </button>
+        <button
+          className="primary"
+          disabled={!selected.length || busy}
+          onClick={() => {
+            setBusy(true);
+            void api
+              .call("publish.schedule", {
+                projectId: w.project.id,
+                contentId: content.id,
+                variantId: variant.id,
+                targetIds: selected,
+                scheduledAtUtc: new Date(date).toISOString(),
+                timezone: w.project.timezone,
+              })
+              .then(onDone)
+              .catch((e) => notice(e.message))
+              .finally(() => setBusy(false));
+          }}
+        >
+          创建 {selected.length} 个目标任务
+        </button>
+      </div>
+    </Modal>
+  );
+}
+function Assistant({
+  w,
+  content,
+  codex,
+  setCodex,
+  refresh,
+  guard,
+  notice,
+}: Common & {
+  content: Content;
+  codex: CodexStatus;
+  setCodex: (s: CodexStatus) => void;
+  guard: React.MutableRefObject<() => Promise<boolean>>;
+}) {
+  const [prompt, setPrompt] = useState(""),
+    [model, setModel] = useState(""),
+    [variantId, setVariantId] = useState(content.variants[0]?.id ?? ""),
+    [live, setLive] = useState(""),
+    [activity, setActivity] = useState(""),
+    [busy, setBusy] = useState(false);
+  const runs = w.runs.filter((r) => r.contentId === content.id),
+    active = runs.find((r) =>
+      ["running", "queued", "stopping"].includes(r.status),
+    );
+  useEffect(() => {
+    if (!variantId && content.variants.length)
+      setVariantId(content.variants[0].id);
+  }, [content]);
+  useEffect(
+    () =>
+      api.onEvent((e) => {
+        if (e.projectId === w.project.id && e.type === "codex-delta")
+          setLive((text) => text + (e.text ?? ""));
+        if (e.projectId === w.project.id && e.type === "codex-activity")
+          setActivity(e.message ?? "");
+      }),
+    [w.project.id],
+  );
+  const connect = async () => {
+    setBusy(true);
+    try {
+      setCodex(await api.call<CodexStatus>("codex.connect"));
+    } catch (e) {
+      notice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const start = async () => {
+    if (!(await guard.current())) return;
+    try {
+      setLive("");
+      await api.call("codex.start", {
+        projectId: w.project.id,
+        contentId: content.id,
+        variantId,
+        prompt,
+        model: model || undefined,
+      });
+      setPrompt("");
+      await refresh();
+    } catch (e) {
+      notice((e as Error).message);
+    }
+  };
+  return (
+    <aside className="assistant">
+      <div className="assistant-header">
+        <div className="ai-icon">
+          <Sparkles size={18} />
+        </div>
+        <div>
+          <h2>Codex 内容助手</h2>
+          <small>
+            <span className={`dot ${codex.state === "ready" ? "" : "gray"}`} />
+            {codex.state === "ready" ? "本机已连接" : "等待连接"}
+          </small>
+        </div>
+        <span className="pill tiny">AI</span>
+      </div>
+      <div className="assistant-context">
+        <Folder size={14} />
+        <span>{w.project.name}</span>
+        <span className="context-label">当前项目</span>
+      </div>
+      <div className="assistant-scroll">
+        {codex.state !== "ready" && (
+          <div className="ai-welcome">
+            <Sparkles size={27} />
+            <h3>你的项目内容搭档</h3>
+            <p>基于当前身份、事实底稿与选定素材，起草更贴合平台的表达。</p>
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={() => void connect()}
+            >
+              {busy ? "正在连接…" : "连接本机 Codex"}
+            </button>
+            <p className="hint">{codex.message}</p>
+          </div>
+        )}
+        {runs.length === 0 && codex.state === "ready" && (
+          <div className="ai-welcome">
+            <Sparkles size={27} />
+            <h3>今天，想表达什么？</h3>
+            <p>素材和身份已就位。给我一个方向，我们把它写成内容。</p>
+          </div>
+        )}
+        <div className="quick-actions">
+          {[
+            "按当前平台与语言起草",
+            "根据事实底稿检查并改写",
+            "翻译成英文，保持语气自然",
+            "整理为适合群聊的简洁文案",
+          ].map((t) => (
+            <button key={t} onClick={() => setPrompt(t)}>
+              <Sparkles size={13} />
+              {t}
+              <ArrowRight size={13} />
+            </button>
+          ))}
+        </div>
+        {[...runs].reverse().map((run) => (
+          <div className="chat-run" key={run.id}>
+            <div className="chat-user">{run.prompt}</div>
+            <div className="chat-result">
+              <div>
+                <Sparkles size={14} />
+                <strong>Codex</strong>
+                <span>{statusName[run.status] ?? run.status}</span>
+              </div>
+              <pre>
+                {active?.id === run.id && live
+                  ? live
+                  : run.output || run.error || "正在准备当前身份与素材…"}
+              </pre>
+              {run.error && run.output && (
+                <p className="warning-text">{run.error}</p>
+              )}
+              {["suggestion", "invalid"].includes(run.status) && (
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    let body = run.output;
+                    try {
+                      body = JSON.parse(run.output).body ?? body;
+                    } catch {
+                      /* preserve raw result */
+                    }
+                    void navigator.clipboard.writeText(body);
+                    notice("已复制建议内容，可粘贴到编辑器合并");
+                  }}
+                >
+                  复制建议内容
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="assistant-input">
+        <label>
+          写入版本
+          <select
+            value={variantId}
+            onChange={(e) => setVariantId(e.target.value)}
+          >
+            {content.variants.map((v) => (
+              <option key={v.id} value={v.id}>
+                {platformNames[v.platform]} · {v.locale}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="prompt-box">
+          <textarea
+            aria-label="Codex 生成要求"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="描述你的想法，或选择一个动作…"
+            rows={3}
+          />
+          <div>
+            <select
+              aria-label="模型"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              <option value="">CLI 默认模型</option>
+              {codex.models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+            {active ? (
+              <button
+                className="stop-button"
+                aria-label="停止生成"
+                onClick={() =>
+                  void api
+                    .call("codex.stop", {
+                      projectId: w.project.id,
+                      runId: active.id,
+                    })
+                    .catch((e) => notice(e.message))
+                }
+              >
+                <Square size={14} />
+              </button>
+            ) : (
+              <button
+                className="send-button"
+                aria-label="开始生成"
+                disabled={
+                  !prompt.trim() || !variantId || codex.state !== "ready"
+                }
+                onClick={() => void start()}
+              >
+                <ArrowUp size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+        <p>
+          {active
+            ? activity || "结果将写回发起任务的项目"
+            : "只读生成 · 有冲突时保留建议版本"}
+        </p>
+      </div>
+    </aside>
+  );
+}
+function Assets({
+  w,
+  refresh,
+  notice,
+  progress,
+}: Common & { progress: string }) {
+  const [mode, setMode] = useState<"copy" | "reference">("copy"),
+    [busy, setBusy] = useState(false),
+    [filter, setFilter] = useState("all"),
+    [query, setQuery] = useState(""),
+    [selected, setSelected] = useState<Asset | null>(null),
+    [page, setPage] = useState(0),
+    [error, setError] = useState(""),
+    [crop, setCrop] = useState(false),
+    [rect, setRect] = useState({ x: 0, y: 0, width: 100, height: 100 });
+  const video = useRef<HTMLVideoElement>(null);
+  const filtered = w.assets.filter(
+    (a) =>
+      (filter === "all" || a.kind === filter) &&
+      a.name.toLowerCase().includes(query.toLowerCase()),
+  );
+  const call = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      notice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const importFiles = (paths?: string[]) =>
+    call(async () => {
+      const r = await api.call<{ status: string }[]>("assets.import", {
+        projectId: w.project.id,
+        mode,
+        paths,
+      });
+      notice(
+        `导入 ${r.filter((x) => x.status === "imported").length} 份，复用 ${r.filter((x) => x.status === "reused").length} 份，失败或跳过 ${r.filter((x) => ["failed", "skipped"].includes(x.status)).length} 份`,
+      );
+    });
+  const frame = () =>
+    call(async () => {
+      const v = video.current!;
+      const canvas = document.createElement("canvas");
+      canvas.width = v.videoWidth;
+      canvas.height = v.videoHeight;
+      canvas.getContext("2d")!.drawImage(v, 0, 0);
+      await api.call("assets.derive", {
+        projectId: w.project.id,
+        assetId: selected!.id,
+        kind: "frame",
+        dataUrl: canvas.toDataURL("image/png"),
+        parameters: { timeSeconds: v.currentTime },
+      });
+      notice("当前关键帧已另存为项目素材");
+    });
+  return (
+    <div
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        if (!busy) void importFiles(api.filePaths([...e.dataTransfer.files]));
+      }}
+    >
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">ASSET LIBRARY</div>
+          <h1>
+            素材库 <span className="count">{w.assets.length}</span>
+          </h1>
+          <p>收好每个画面，随时为内容所用。</p>
+        </div>
+        <div className="button-row">
+          <select
+            aria-label="导入方式"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as typeof mode)}
+          >
+            <option value="copy">复制到项目</option>
+            <option value="reference">引用原文件</option>
+          </select>
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={() => void importFiles()}
+          >
+            <Plus size={17} />
+            导入素材
+          </button>
+        </div>
+      </div>
+      <div className="toolbar">
+        <div className="segmented">
+          {[
+            ["all", "全部"],
+            ["image", "图片"],
+            ["video", "视频"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              className={filter === id ? "selected" : ""}
+              onClick={() => {
+                setFilter(id);
+                setPage(0);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="search">
+          <Search size={16} />
+          <input
+            placeholder="搜索素材"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(0);
+            }}
+          />
+        </div>
+        <button
+          className="text-button"
+          disabled={busy}
+          onClick={() =>
+            void call(() =>
+              api.call("assets.paste", { projectId: w.project.id }),
+            )
+          }
+        >
+          <Copy size={15} />
+          粘贴截图
+        </button>
+      </div>
+      {busy && (
+        <div className="progress-note">{progress || "正在处理素材…"}</div>
+      )}
+      {!filtered.length ? (
+        <div className="dropzone">
+          <Empty
+            icon={ImageIcon}
+            title="把图片和视频带进来"
+            text="拖放文件或文件夹到此处，支持 JPEG、PNG、WebP 和常见 MP4。"
+            action={
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() => void importFiles()}
+              >
+                <FolderOpen size={16} />
+                选择素材
+              </button>
+            }
+          />
+        </div>
+      ) : (
+        <div className="asset-grid">
+          {filtered.slice(page * 60, page * 60 + 60).map((a) => (
+            <button
+              key={a.id}
+              className="asset-card"
+              onClick={() => {
+                setSelected(a);
+                setError("");
+                setCrop(false);
+              }}
+            >
+              <div className="asset-image">
+                {a.availability !== "available" ? (
+                  <div className="video-tile">
+                    <AlertCircle size={28} />
+                    <small>
+                      {a.availability === "missing" ? "文件丢失" : "文件已变化"}
+                    </small>
+                  </div>
+                ) : a.kind === "image" ? (
+                  <img
+                    src={mediaUrl(w.project.id, a)}
+                    alt={a.name}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="video-tile">
+                    <video
+                      src={mediaUrl(w.project.id, a)}
+                      preload="metadata"
+                      muted
+                    />
+                    <span>
+                      <Play size={24} />
+                    </span>
+                  </div>
+                )}
+                <em>{a.kind === "image" ? "图片" : "视频"}</em>
+              </div>
+              <div className="asset-card-info">
+                <strong>{a.name}</strong>
+                <small>
+                  {(a.bytes / 1024 / 1024).toFixed(1)} MB ·{" "}
+                  {a.storageMode === "copy" ? "项目素材" : "外部引用"}
+                  {a.derivedFrom ? " · 衍生副本" : ""}
+                </small>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {filtered.length > 60 && (
+        <div className="pagination">
+          <button
+            className="secondary"
+            disabled={page === 0}
+            onClick={() => setPage(page - 1)}
+          >
+            上一页
+          </button>
+          <span>
+            {page + 1} / {Math.ceil(filtered.length / 60)}
+          </span>
+          <button
+            className="secondary"
+            disabled={(page + 1) * 60 >= filtered.length}
+            onClick={() => setPage(page + 1)}
+          >
+            下一页
+          </button>
+        </div>
+      )}
+      {selected && (
+        <Modal wide title={selected.name} onClose={() => setSelected(null)}>
+          <div className="media-viewer">
+            {selected.kind === "image" ? (
+              <img
+                src={mediaUrl(w.project.id, selected)}
+                alt={selected.name}
+                onError={() => setError("图片无法解码或源文件已丢失")}
+              />
+            ) : (
+              <video
+                ref={video}
+                crossOrigin="anonymous"
+                src={mediaUrl(w.project.id, selected)}
+                controls
+                preload="metadata"
+                onError={() =>
+                  setError(
+                    "当前编码无法播放或源文件已丢失。可重连原文件；转码工具尚未内置。",
+                  )
+                }
+              />
+            )}
+          </div>
+          {error && <p className="warning-text">{error}</p>}
+          <div className="media-details">
+            <span>{(selected.bytes / 1024 / 1024).toFixed(2)} MB</span>
+            <span>{selected.mime}</span>
+            <span>
+              {selected.storageMode === "copy" ? "项目素材" : "外部引用"}
+            </span>
+          </div>
+          <div className="button-row">
+            {selected.kind === "video" ? (
+              <button className="secondary" onClick={() => void frame()}>
+                <Camera size={16} />
+                保存当前关键帧
+              </button>
+            ) : (
+              <button className="secondary" onClick={() => setCrop(!crop)}>
+                <Scissors size={16} />
+                裁剪副本
+              </button>
+            )}
+            <button
+              className="secondary"
+              onClick={() =>
+                void call(() =>
+                  api.call("assets.reconnect", {
+                    projectId: w.project.id,
+                    assetId: selected.id,
+                  }),
+                )
+              }
+            >
+              <Link size={16} />
+              重新定位
+            </button>
+            <button
+              className="text-button danger"
+              onClick={() =>
+                void call(async () => {
+                  await api.call("assets.remove", {
+                    projectId: w.project.id,
+                    assetId: selected.id,
+                  });
+                  setSelected(null);
+                  notice("已移除素材登记，原文件保留");
+                })
+              }
+            >
+              <Trash2 size={15} />
+              移除登记
+            </button>
+          </div>
+          {crop && (
+            <form
+              className="crop-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void call(async () => {
+                  await api.call("assets.derive", {
+                    projectId: w.project.id,
+                    assetId: selected.id,
+                    kind: "crop",
+                    parameters: rect,
+                  });
+                  setCrop(false);
+                  notice("裁剪已另存副本，原图保持不变");
+                });
+              }}
+            >
+              {(["x", "y", "width", "height"] as const).map((k) => (
+                <label key={k}>
+                  {k}
+                  <input
+                    type="number"
+                    min={0}
+                    value={rect[k]}
+                    onChange={(e) =>
+                      setRect({ ...rect, [k]: Number(e.target.value) })
+                    }
+                  />
+                </label>
+              ))}
+              <button className="primary">保存裁剪副本</button>
+            </form>
+          )}
+          <p className="hint">
+            视频的播放与拖动由本机解码器完成；裁剪和关键帧会保存为新素材。
+          </p>
+        </Modal>
+      )}
+    </div>
+  );
+}
+function Accounts({ w, refresh, notice }: Common) {
+  const [profile, setProfile] = useState({
+      ...w.profile,
+      name: w.project.name,
+      identityType: w.project.identityType,
+      timezone: w.project.timezone,
+    }),
+    [tab, setTab] = useState("accounts"),
+    [accountModal, setAccountModal] = useState(false),
+    [targetFor, setTargetFor] = useState<Account | null>(null),
+    [platform, setPlatform] = useState<Platform>("wechat"),
+    [label, setLabel] = useState(""),
+    [externalId, setExternalId] = useState(""),
+    [accountType, setAccountType] = useState("profile"),
+    [kind, setKind] = useState<Target["kind"]>("group"),
+    [targetLabel, setTargetLabel] = useState("");
+  const call = async (fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      notice((e as Error).message);
+    }
+  };
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">ACCOUNTS & IDENTITY</div>
+          <h1>账号与定位</h1>
+          <p>先明确“我是谁”，再决定“向哪里表达”。</p>
+        </div>
+        {tab === "accounts" && (
+          <button className="primary" onClick={() => setAccountModal(true)}>
+            <Plus size={17} />
+            登记平台账号
+          </button>
+        )}
+      </div>
+      <div className="tabs">
+        <button
+          className={tab === "accounts" ? "selected" : ""}
+          onClick={() => setTab("accounts")}
+        >
+          平台账号与目标
+        </button>
+        <button
+          className={tab === "profile" ? "selected" : ""}
+          onClick={() => setTab("profile")}
+        >
+          身份资料
+        </button>
+      </div>
+      {tab === "profile" ? (
+        <form
+          className="card profile-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void call(async () => {
+              await api.call("project.profile", {
+                projectId: w.project.id,
+                ...profile,
+                baseRevision: w.project.revision,
+              });
+              notice("身份资料已保存，下一次生成将使用这些资料");
+            });
+          }}
+        >
+          <h2>项目身份</h2>
+          <div className="two-col">
+            <label>
+              项目名称
+              <input
+                required
+                value={profile.name}
+                onChange={(e) =>
+                  setProfile({ ...profile, name: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              身份类型
+              <select
+                value={profile.identityType}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    identityType: e.target.value as typeof profile.identityType,
+                  })
+                }
+              >
+                <option value="brand">品牌官号</option>
+                <option value="founder">创始人 IP</option>
+                <option value="custom">自定义身份</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            显示时区（IANA）
+            <input
+              value={profile.timezone}
+              onChange={(e) =>
+                setProfile({ ...profile, timezone: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            身份定位
+            <textarea
+              rows={4}
+              value={profile.identity}
+              onChange={(e) =>
+                setProfile({ ...profile, identity: e.target.value })
+              }
+              placeholder="这个账号是谁，为谁提供什么价值？"
+            />
+          </label>
+          <label>
+            已确认事实
+            <textarea
+              rows={5}
+              value={profile.facts}
+              onChange={(e) =>
+                setProfile({ ...profile, facts: e.target.value })
+              }
+              placeholder="品牌事实、产品名称、数据与允许引用的信息"
+            />
+          </label>
+          <label>
+            表达风格
+            <textarea
+              rows={4}
+              value={profile.voice}
+              onChange={(e) =>
+                setProfile({ ...profile, voice: e.target.value })
+              }
+              placeholder="语气、术语、避免使用的表达"
+            />
+          </label>
+          <div className="modal-actions">
+            <button className="primary">保存身份资料</button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="info-banner">
+            <Users size={18} />
+            <p>
+              九个平台均可登记并准备发布包。当前使用人工辅助发布，账号登记不代表已获得平台授权。
+            </p>
+          </div>
+          {!w.accounts.length ? (
+            <div className="card">
+              <Empty
+                icon={Users}
+                title="登记你的第一个发布账号"
+                text="一个账号可包含多个群、频道、页面或主页目标。"
+              />
+            </div>
+          ) : (
+            <div className="account-grid">
+              {w.accounts.map((a) => (
+                <section className="card account-card" key={a.id}>
+                  <div className="section-heading">
+                    <Badge platform={a.platform} />
+                    <span className={`state ${a.enabled ? "" : "muted"}`}>
+                      {a.enabled ? "辅助发布" : "已停用"}
+                    </span>
+                  </div>
+                  <h2>{a.label}</h2>
+                  <p>
+                    {a.externalId || "仅本地登记"} · {a.accountType}
+                  </p>
+                  <div className="account-targets">
+                    {w.targets
+                      .filter((t) => t.accountId === a.id)
+                      .map((t) => (
+                        <div key={t.id}>
+                          <span className="target-icon">
+                            {t.kind === "group" ? (
+                              <Users size={15} />
+                            ) : (
+                              <Send size={15} />
+                            )}
+                          </span>
+                          <span>{t.label}</span>
+                          <span className="muted">{t.kind}</span>
+                        </div>
+                      ))}
+                    {!w.targets.some((t) => t.accountId === a.id) && (
+                      <p className="hint">添加一个实际发布目标即可安排内容。</p>
+                    )}
+                  </div>
+                  <div className="account-footer">
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setTargetFor(a);
+                        setTargetLabel("");
+                        setKind(
+                          a.platform === "wechat"
+                            ? "group"
+                            : a.platform === "discord"
+                              ? "channel"
+                              : "profile",
+                        );
+                      }}
+                    >
+                      <Plus size={15} />
+                      添加目标
+                    </button>
+                    <button
+                      className="text-button muted"
+                      onClick={() =>
+                        void call(() =>
+                          api.call("accounts.enabled", {
+                            projectId: w.project.id,
+                            accountId: a.id,
+                            enabled: !a.enabled,
+                          }),
+                        )
+                      }
+                    >
+                      {a.enabled ? "停用账号" : "启用账号"}
+                    </button>
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+          <div className="platform-strip">
+            {platforms.map((p) => (
+              <Badge key={p} platform={p} />
+            ))}
+          </div>
+        </>
+      )}
+      {accountModal && (
+        <Modal title="登记平台账号" onClose={() => setAccountModal(false)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void call(async () => {
+                await api.call("accounts.add", {
+                  projectId: w.project.id,
+                  platform,
+                  label,
+                  externalId,
+                  accountType,
+                });
+                setAccountModal(false);
+                setLabel("");
+                setExternalId("");
+              });
+            }}
+          >
+            <label>
+              平台
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value as Platform)}
+              >
+                {platforms.map((p) => (
+                  <option key={p} value={p}>
+                    {platformNames[p]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              账号名称
+              <input
+                required
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="例如：品牌运营微信"
+              />
+            </label>
+            <label>
+              公开账号标识（选填）
+              <input
+                value={externalId}
+                onChange={(e) => setExternalId(e.target.value)}
+                placeholder="用户名或公开账号 ID，勿填写令牌"
+              />
+            </label>
+            <label>
+              账号类型
+              <select
+                value={accountType}
+                onChange={(e) => setAccountType(e.target.value)}
+              >
+                <option value="profile">个人 / 主页账号</option>
+                <option value="professional">专业账号</option>
+                <option value="page">Facebook Page</option>
+                <option value="channel">频道账号</option>
+                <option value="operator">群运营身份</option>
+              </select>
+            </label>
+            <p className="hint">仅保存公开标识与用途。自动发布尚未接入。</p>
+            <div className="modal-actions">
+              <button className="primary">保存账号</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {targetFor && (
+        <Modal
+          title={`为 ${targetFor.label} 添加目标`}
+          onClose={() => setTargetFor(null)}
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void call(async () => {
+                await api.call("targets.add", {
+                  projectId: w.project.id,
+                  accountId: targetFor.id,
+                  label: targetLabel,
+                  kind,
+                });
+                setTargetFor(null);
+              });
+            }}
+          >
+            <label>
+              目标名称
+              <input
+                required
+                value={targetLabel}
+                onChange={(e) => setTargetLabel(e.target.value)}
+                placeholder="例如：产品共创一群"
+              />
+            </label>
+            <label>
+              目标类型
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value as Target["kind"])}
+              >
+                <option value="group">群聊</option>
+                <option value="channel">频道</option>
+                <option value="profile">主页</option>
+                <option value="page">Page 页面</option>
+              </select>
+            </label>
+            <p className="hint">目标名称是本地记录，不会创建或加入真实群聊。</p>
+            <div className="modal-actions">
+              <button className="primary">添加目标</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
+  );
+}
+function Records({ w, refresh, notice }: Common) {
+  const [selected, setSelected] = useState<Job | null>(null),
+    [filter, setFilter] = useState("all"),
+    [by, setBy] = useState(""),
+    [date, setDate] = useState(localInput()),
+    [result, setResult] = useState("已人工发送"),
+    [url, setUrl] = useState(""),
+    [segments, setSegments] = useState<number[]>([]),
+    [busy, setBusy] = useState(false);
+  const call = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      notice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const jobs = w.jobs.filter(
+    (j) =>
+      filter === "all" ||
+      (filter === "completed"
+        ? j.status === "completed"
+        : !["completed", "cancelled"].includes(j.status)),
+  );
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">PUBLISHING LOG</div>
+          <h1>发布记录</h1>
+          <p>每个目标独立留痕，每次完成都有依据。</p>
+        </div>
+        <span className="pill">人工辅助发布</span>
+      </div>
+      <div className="toolbar">
+        <div className="segmented">
+          {[
+            ["all", "全部"],
+            ["pending", "待完成"],
+            ["completed", "已完成"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              className={id === filter ? "selected" : ""}
+              onClick={() => setFilter(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="muted">共 {jobs.length} 个目标任务</span>
+      </div>
+      <div className="card records-card">
+        {!jobs.length ? (
+          <Empty
+            icon={Send}
+            title="还没有发布记录"
+            text="在内容版本中标记就绪并安排发布后，逐目标任务会出现在这里。"
+          />
+        ) : (
+          jobs.map((j) => (
+            <div className="job-row" key={j.id}>
+              <div className="job-main">
+                <div>
+                  <Badge platform={j.platform} />
+                  <span
+                    className={`state ${j.status === "completed" ? "green" : j.status === "partial" ? "amber" : ""}`}
+                  >
+                    {statusName[j.status]}
+                  </span>
+                  {j.status === "scheduled" &&
+                    Date.parse(j.scheduledAtUtc) < Date.now() && (
+                      <span className="state amber">已过截止时间</span>
+                    )}
+                </div>
+                <h3>{j.title}</h3>
+                <p>
+                  {j.accountLabel} <ArrowRight size={12} /> {j.targetLabel}
+                </p>
+                <small>
+                  {formatTime(j.scheduledAtUtc, j.timezone)} · 固定快照 ·{" "}
+                  {j.segmentCount} 段消息
+                </small>
+                {j.receipt && (
+                  <p className="receipt-note">
+                    {j.receipt.recordedBy} · {j.receipt.result} ·{" "}
+                    {j.receipt.completedSegments.length}/{j.segmentCount} 段完成
+                    {j.receipt.url && <span> · {j.receipt.url}</span>}
+                  </p>
+                )}
+              </div>
+              <div className="job-actions">
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    void call(async () => {
+                      await api.call("publish.export", {
+                        projectId: w.project.id,
+                        jobId: j.id,
+                      });
+                      notice("发布包已导出，任务仍需人工发布与回填");
+                    })
+                  }
+                >
+                  <Download size={15} />
+                  导出发布包
+                </button>
+                {!["completed", "cancelled"].includes(j.status) && (
+                  <button
+                    className="primary"
+                    onClick={() => {
+                      setSelected(j);
+                      setBy(j.receipt?.recordedBy ?? "");
+                      setDate(localInput());
+                      setResult(j.receipt?.result ?? "已人工发送");
+                      setUrl(j.receipt?.url ?? "");
+                      setSegments(
+                        j.receipt?.completedSegments ??
+                          Array.from({ length: j.segmentCount }, (_, i) => i),
+                      );
+                    }}
+                  >
+                    回填结果
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      {selected && (
+        <Modal
+          title={`记录结果 · ${selected.targetLabel}`}
+          onClose={() => setSelected(null)}
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void call(async () => {
+                await api.call("publish.record", {
+                  projectId: w.project.id,
+                  jobId: selected.id,
+                  receipt: {
+                    recordedBy: by,
+                    recordedAt: new Date(date).toISOString(),
+                    result,
+                    url,
+                    completedSegments: segments,
+                  },
+                });
+                setSelected(null);
+                notice("已保存此目标的人工发布记录");
+              });
+            }}
+          >
+            <div className="two-col">
+              <label>
+                实际发送人
+                <input
+                  required
+                  value={by}
+                  onChange={(e) => setBy(e.target.value)}
+                />
+              </label>
+              <label>
+                实际发送时间
+                <input
+                  required
+                  type="datetime-local"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </label>
+            </div>
+            <label>
+              发布结果或备注
+              <textarea
+                required
+                rows={3}
+                value={result}
+                onChange={(e) => setResult(e.target.value)}
+              />
+            </label>
+            <label>
+              公开链接（可选）
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="微信群无公开链接时可留空"
+              />
+            </label>
+            <label>已发送的消息段</label>
+            <div className="segment-checks">
+              {Array.from({ length: selected.segmentCount }, (_, i) => (
+                <label className="check-row" key={i}>
+                  <input
+                    type="checkbox"
+                    checked={segments.includes(i)}
+                    disabled={selected.receipt?.completedSegments.includes(i)}
+                    onChange={(e) =>
+                      setSegments(
+                        e.target.checked
+                          ? [...segments, i]
+                          : segments.filter((n) => n !== i),
+                      )
+                    }
+                  />
+                  第 {i + 1} 段
+                </label>
+              ))}
+            </div>
+            <p className="hint">
+              只发送部分消息时，请取消未发送的段落，任务会保留为“部分完成”。
+            </p>
+            <div className="modal-actions">
+              <button className="primary" disabled={!segments.length || busy}>
+                保存人工记录
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
+  );
+}
+function Calendar({
+  w,
+  refresh,
+  notice,
+  onRecords,
+}: Common & { onRecords: () => void }) {
+  const [offset, setOffset] = useState(0),
+    [filter, setFilter] = useState("all"),
+    [editing, setEditing] = useState<Job | null>(null),
+    [date, setDate] = useState(""),
+    [undo, setUndo] = useState<{ job: Job } | null>(null);
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  base.setDate(base.getDate() - ((base.getDay() + 6) % 7) + offset * 7);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+  const key = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: w.project.timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  const call = async (fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      notice((e as Error).message);
+    }
+  };
+  const changeDate = (j: Job, iso: string) =>
+    call(async () => {
+      await api.call("publish.update", {
+        projectId: w.project.id,
+        jobId: j.id,
+        scheduledAtUtc: iso,
+        status: "scheduled",
+      });
+      setUndo({ job: j });
+    });
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">PUBLISHING CALENDAR</div>
+          <h1>发布日历</h1>
+          <p>给内容一个明确的时间。时区：{w.project.timezone}</p>
+        </div>
+        <button className="secondary" onClick={onRecords}>
+          <Send size={16} />
+          查看发布记录
+        </button>
+      </div>
+      <div className="toolbar">
+        <div className="button-row">
+          <button
+            className="icon"
+            aria-label="上一周"
+            onClick={() => setOffset(offset - 1)}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <strong>
+            {base.getFullYear()} 年 {base.getMonth() + 1} 月
+          </strong>
+          <button
+            className="icon"
+            aria-label="下一周"
+            onClick={() => setOffset(offset + 1)}
+          >
+            <ChevronRight size={18} />
+          </button>
+          <button
+            className="secondary small-button"
+            onClick={() => setOffset(0)}
+          >
+            本周
+          </button>
+        </div>
+        <select
+          aria-label="日历平台筛选"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="all">全部平台</option>
+          {platforms.map((p) => (
+            <option key={p} value={p}>
+              {platformNames[p]}
+            </option>
+          ))}
+        </select>
+        <span className="muted">拖动任务可改期</span>
+      </div>
+      <div className="calendar-grid">
+        {days.map((d, i) => (
+          <div
+            className={`calendar-day ${key(d) === key(new Date()) ? "today" : ""}`}
+            key={i}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const j = w.jobs.find(
+                (j) => j.id === e.dataTransfer.getData("text/plain"),
+              );
+              if (j) {
+                const original = new Date(j.scheduledAtUtc);
+                const next = new Date(d);
+                next.setHours(original.getHours(), original.getMinutes());
+                void changeDate(j, next.toISOString());
+              }
+            }}
+          >
+            <div className="calendar-date">
+              <span>
+                {["周一", "周二", "周三", "周四", "周五", "周六", "周日"][i]}
+              </span>
+              <strong>
+                {new Intl.DateTimeFormat("zh", {
+                  timeZone: w.project.timezone,
+                  day: "numeric",
+                }).format(d)}
+              </strong>
+            </div>
+            {w.jobs
+              .filter(
+                (j) =>
+                  key(new Date(j.scheduledAtUtc)) === key(d) &&
+                  j.status !== "cancelled" &&
+                  (filter === "all" || j.platform === filter),
+              )
+              .map((j) => (
+                <button
+                  className={`calendar-job ${j.status === "completed" ? "done" : ""}`}
+                  draggable={!["completed", "partial"].includes(j.status)}
+                  onDragStart={(e) =>
+                    e.dataTransfer.setData("text/plain", j.id)
+                  }
+                  key={j.id}
+                  onClick={() => {
+                    setEditing(j);
+                    setDate(localInput(new Date(j.scheduledAtUtc)));
+                  }}
+                >
+                  <Badge platform={j.platform} />
+                  <strong>{j.title}</strong>
+                  <span>{j.targetLabel}</span>
+                  <small>
+                    {formatTime(j.scheduledAtUtc, j.timezone)} ·{" "}
+                    {statusName[j.status]}
+                  </small>
+                </button>
+              ))}
+          </div>
+        ))}
+      </div>
+      <p className="hint">
+        这里的排期是人工截止时间。电脑休眠或关闭后，不会自动补发。
+      </p>
+      {undo && (
+        <div className="undo-bar">
+          已修改任务时间
+          <button
+            className="text-button"
+            onClick={() =>
+              void call(async () => {
+                await api.call("publish.update", {
+                  projectId: w.project.id,
+                  jobId: undo.job.id,
+                  scheduledAtUtc: undo.job.scheduledAtUtc,
+                  status: undo.job.status,
+                });
+                setUndo(null);
+              })
+            }
+          >
+            撤销改期
+          </button>
+        </div>
+      )}
+      {editing && (
+        <Modal title={editing.title} onClose={() => setEditing(null)}>
+          <p>
+            {editing.accountLabel} → {editing.targetLabel}
+          </p>
+          <label>
+            人工截止时间（本机时区）
+            <input
+              type="datetime-local"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+          <p className="hint">
+            显示：{formatTime(editing.scheduledAtUtc, editing.timezone)} ·{" "}
+            {statusName[editing.status]}
+          </p>
+          <div className="modal-actions">
+            {!["completed", "cancelled", "partial"].includes(
+              editing.status,
+            ) && (
+              <>
+                <button
+                  className="text-button danger"
+                  onClick={() =>
+                    void call(async () => {
+                      await api.call("publish.update", {
+                        projectId: w.project.id,
+                        jobId: editing.id,
+                        status: "cancelled",
+                      });
+                      setEditing(null);
+                    })
+                  }
+                >
+                  取消任务
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    void call(async () => {
+                      await api.call("publish.update", {
+                        projectId: w.project.id,
+                        jobId: editing.id,
+                        status: "paused",
+                      });
+                      setEditing(null);
+                    })
+                  }
+                >
+                  暂停
+                </button>
+                <button
+                  className="primary"
+                  onClick={() => {
+                    void changeDate(editing, new Date(date).toISOString());
+                    setEditing(null);
+                  }}
+                >
+                  保存改期
+                </button>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+function SettingsPage({
+  w,
+  codex,
+  setCodex,
+  notice,
+  onRestore,
+}: {
+  w: Workspace;
+  codex: CodexStatus;
+  setCodex: (s: CodexStatus) => void;
+  notice: (s: string) => void;
+  onRestore: (w: Workspace) => void;
+}) {
+  const [includeExternal, setIncludeExternal] = useState(true),
+    [busy, setBusy] = useState(false);
+  const call = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      notice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">PREFERENCES</div>
+          <h1>设置与备份</h1>
+          <p>让本地数据可管理、可迁移、可恢复。</p>
+        </div>
+      </div>
+      <div className="settings-stack">
+        <section className="card settings-card">
+          <div>
+            <Folder size={22} />
+            <h2>项目文件</h2>
+            <p>{w.project.root}</p>
+          </div>
+          <button
+            className="secondary"
+            onClick={() =>
+              void call(() =>
+                api.call("project.reveal", { projectId: w.project.id }),
+              )
+            }
+          >
+            打开文件夹
+          </button>
+        </section>
+        <section className="card settings-card">
+          <div>
+            <Sparkles size={22} />
+            <h2>本机 Codex</h2>
+            <p>
+              {codex.message} {codex.version}
+            </p>
+            <small>使用本机 CLI 登录状态；模型目录在连接时读取。</small>
+          </div>
+          <div className="button-row">
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={() =>
+                void call(async () => {
+                  await api.call("settings.codexPath");
+                  notice("CLI 路径已保存，重新启动应用后生效");
+                })
+              }
+            >
+              选择 CLI
+            </button>
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() =>
+                void call(async () =>
+                  setCodex(await api.call<CodexStatus>("codex.connect")),
+                )
+              }
+            >
+              检查连接
+            </button>
+          </div>
+        </section>
+        <section className="card backup-card">
+          <div className="section-heading">
+            <h2>一致性备份</h2>
+            <span className="pill">本地文件夹</span>
+          </div>
+          <p>
+            备份身份、文案、素材、历史、发布快照、SQLite
+            任务与应用会话记录。不会包含 Codex 登录凭据。
+          </p>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={includeExternal}
+              onChange={(e) => setIncludeExternal(e.target.checked)}
+            />
+            包含已登记的外部引用素材
+          </label>
+          <div className="button-row">
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() =>
+                void call(async () => {
+                  const result = await api.call<string | null>(
+                    "backup.create",
+                    { projectId: w.project.id, includeExternal },
+                  );
+                  if (result) notice("备份已保存到 " + result);
+                })
+              }
+            >
+              <Download size={16} />
+              导出项目备份
+            </button>
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={() =>
+                void call(async () => {
+                  const restored = await api.call<Workspace | null>(
+                    "backup.restore",
+                  );
+                  if (restored) {
+                    onRestore(restored);
+                    notice("备份已恢复，未完成任务已暂停");
+                  }
+                })
+              }
+            >
+              <RefreshCw size={16} />
+              恢复备份
+            </button>
+          </div>
+          <p className="hint">
+            恢复到空目录，并切换到恢复项目；原项目保留。所有未完成发布任务默认暂停。
+          </p>
+        </section>
+        <section className="card backup-card">
+          <h2>当前能力</h2>
+          <div className="capability-line">
+            <span className="dot" />9 个平台辅助发布包与人工回填
+          </div>
+          <div className="capability-line">
+            <span className="dot" />
+            图片预览、常见 MP4 播放、裁剪副本与关键帧
+          </div>
+          <div className="capability-line">
+            <span className="dot gray" />
+            自动发帖、云端同步、视频转码尚未启用
+          </div>
+          <p className="hint">
+            Windows 便携 / 安装版 · v0.1 · 单机单写入者。退出应用会停止 AI
+            任务。
+          </p>
+        </section>
+      </div>
+    </>
+  );
+}
+createRoot(document.getElementById("root")!).render(<App />);
