@@ -524,6 +524,15 @@ app.whenReady().then(async () => {
     }
   });
   await win.loadURL(entry);
+  if (
+    process.env.WORKBENCH_DEV_URL &&
+    process.env.WORKBENCH_AUTO_CONNECT_CODEX === "1"
+  ) {
+    const status = await codex.connect(codex.readSettings().codexPath);
+    console.info(
+      `[dev] Codex ${status.state}: ${status.message}; ${status.version}; models=${status.models.length}`,
+    );
+  }
 });
 app.on("second-instance", () => {
   if (win) {

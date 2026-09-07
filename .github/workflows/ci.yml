@@ -25,10 +25,13 @@ jobs:
       - run: npm run test:media
       - run: npm run test:e2e
       - run: npm run dist:win
+        if: github.ref == 'refs/heads/main'
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - run: npm run test:package
+        if: github.ref == 'refs/heads/main'
       - uses: actions/upload-artifact@v7.0.1
+        if: github.ref == 'refs/heads/main'
         with:
           name: windows-build
           path: release/*/*.exe

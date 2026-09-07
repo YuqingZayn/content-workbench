@@ -6,6 +6,19 @@ Electron 44 + React 19 + TypeScript + SQLite。业务项目是普通文件夹，
 
 ## 怎么启动软件
 
+### dev 分支开发启动
+
+在本仓库目录运行：
+
+```powershell
+git switch dev
+npm run dev
+```
+
+首次获取源码时先运行 `npm ci`。`npm run dev` 会编译源码、启动本地 Vite 服务并打开 Electron 窗口，同时连接本机已登录的 Codex CLI。终端出现 `[dev] Codex ready` 表示连接成功；若未登录或路径不可用，可在软件设置中修正后重连。
+
+开发服务地址为 `http://127.0.0.1:5173`，完整功能通过 Electron 窗口使用。保留运行中的终端即可持续开发，关闭应用窗口会结束开发服务。此命令不生成安装包，`dev` 分支的 GitHub 检查也跳过安装包构建。
+
 ### 已有本次本地交付文件（推荐）
 
 打开本次交付目录，双击上一级的 `启动内容工作台.cmd`。也可以直接双击本仓库目录下的 `release/0.1.1/win-unpacked/Content Workbench.exe`。升级前请先保存并关闭已经打开的旧版本。
