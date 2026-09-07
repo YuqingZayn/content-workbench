@@ -18,7 +18,7 @@
     "verify:codex": "tsx scripts/verify-codex.ts",
     "verify:first-loop": "tsx scripts/verify-first-loop.ts",
     "test:package": "node scripts/smoke-package.mjs",
-    "dist:win": "node scripts/ensure-runtime.mjs && npm run build && electron-builder --win nsis portable --x64",
+    "dist:win": "node scripts/ensure-runtime.mjs && npm run build && node scripts/dist-win.mjs",
     "start": "electron ."
   },
   "dependencies": {
