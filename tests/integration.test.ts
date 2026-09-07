@@ -29,6 +29,173 @@ import {
   type NativePlatform,
 } from "../src/contracts/publishing";
 import type { Variant } from "../src/contracts/model";
+import type { CodexConnection } from "../src/services/codex/connection";
+
+test("Full Access applies on start and resume; task output never overwrites a draft", async () => {
+  const { root, workspace, w } = await setup();
+  const service = new CodexService(workspace, () => {});
+  const requests: { method: string; params: any }[] = [];
+  const approvals: unknown[] = [];
+  let effectiveSandbox = "dangerFullAccess";
+  service.connection = {
+    request: async (method: string, params: any) => {
+      requests.push({ method, params });
+      return method.startsWith("thread/")
+        ? {
+            thread: { id: params.threadId ?? uuid() },
+            sandbox: { type: effectiveSandbox },
+            approvalPolicy: "never",
+          }
+        : { turn: { id: uuid() } };
+    },
+    respond: (_id: unknown, response: unknown) => approvals.push(response),
+  } as unknown as CodexConnection;
+  service.status = {
+    state: "ready",
+    message: "test simulation",
+    version: "test",
+    models: [],
+  };
+  const finish = async (run: AiRun, output: string) => {
+    // drain awaits an RPC before assigning the turn ID.
+    for (let i = 0; i < 20 && !run.turnId && run.status !== "interrupted"; i++)
+      await new Promise((resolve) => setImmediate(resolve));
+    run.output = output;
+    await service.onNotification({
+      method: "turn/completed",
+      params: {
+        threadId: run.threadId,
+        turn: { id: run.turnId, status: "completed" },
+      },
+    });
+  };
+  try {
+    const content = workspace.createContent(w.project.id, "本地任务");
+    const first = service.start({
+      projectId: w.project.id,
+      contentId: content.id,
+      mode: "task",
+      prompt: "修改文件",
+    });
+    await finish(first, "已完成指定文件修改。");
+    assert.equal(first.status, "completed");
+    assert.equal(first.access, "full-access");
+    assert.equal(
+      workspace.getContent(w.project.id, content.id).variants.length,
+      0,
+    );
+    assert.equal(requests[0].params.sandbox, "danger-full-access");
+    assert.equal(requests[0].params.approvalPolicy, "never");
+    assert.deepEqual(requests[1].params.sandboxPolicy, {
+      type: "dangerFullAccess",
+    });
+    assert.equal(requests[1].params.outputSchema, undefined);
+    const second = service.start({
+      projectId: w.project.id,
+      contentId: content.id,
+      mode: "task",
+      prompt: "继续",
+    });
+    for (let i = 0; i < 20 && !second.turnId; i++)
+      await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(requests[2].method, "thread/resume");
+    assert.equal(requests[2].params.sandbox, "danger-full-access");
+    assert.equal(second.threadId, first.threadId);
+    const params = { threadId: second.threadId, turnId: second.turnId };
+    await service.onNotification({
+      id: 1,
+      method: "item/commandExecution/requestApproval",
+      params,
+    });
+    await service.onNotification({
+      id: 2,
+      method: "item/fileChange/requestApproval",
+      params,
+    });
+    await service.onNotification({
+      id: 3,
+      method: "item/fileChange/requestApproval",
+      params: { ...params, threadId: "other-thread" },
+    });
+    assert.deepEqual(approvals, [
+      { decision: "accept" },
+      { decision: "accept" },
+      { decision: "decline" },
+    ]);
+    await finish(second, "第二轮完成。");
+    let withVariant = workspace.addVariant(
+      w.project.id,
+      content.id,
+      "wechat",
+      "zh-CN",
+    );
+    withVariant = ready(workspace, w.project.id, withVariant, "已有的正文");
+    const variant = withVariant.variants[0];
+    const task = service.start({
+      projectId: w.project.id,
+      contentId: content.id,
+      variantId: variant.id,
+      mode: "task",
+      prompt: "只整理文件",
+    });
+    await finish(task, "已整理文件。");
+    assert.equal(
+      workspace.getContent(w.project.id, content.id).variants[0].body,
+      "已有的正文",
+    );
+    const draft = service.start({
+      projectId: w.project.id,
+      contentId: content.id,
+      variantId: variant.id,
+      mode: "draft",
+      prompt: "起草文案",
+    });
+    await finish(
+      draft,
+      JSON.stringify({
+        variantId: variant.id,
+        title: "标题",
+        body: "新文案",
+        tags: [],
+        assetIds: [],
+        factNotes: [],
+      }),
+    );
+    assert.equal(draft.status, "applied");
+    assert.notEqual(draft.threadId, task.threadId);
+    assert.ok(requests.at(-1)!.params.outputSchema);
+    assert.equal(
+      workspace.getContent(w.project.id, content.id).variants[0].body,
+      "新文案",
+    );
+    effectiveSandbox = "readOnly";
+    const before = requests.filter((r) => r.method === "turn/start").length;
+    const rejected = service.start({
+      projectId: w.project.id,
+      contentId: content.id,
+      mode: "task",
+      prompt: "检测权限降级",
+    });
+    for (let i = 0; i < 20 && rejected.status !== "interrupted"; i++)
+      await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(rejected.status, "interrupted");
+    assert.match(rejected.error!, /未启用 Full Access/);
+    assert.equal(
+      requests.filter((r) => r.method === "turn/start").length,
+      before,
+    );
+    assert.ok(
+      readFileSync(
+        path.join(root, `.content-workspace/ai-runs/${first.id}/output.txt`),
+        "utf8",
+      ).includes("指定文件修改"),
+    );
+  } finally {
+    service.active = undefined;
+    service.queue = [];
+    workspace.closeAll();
+  }
+});
 
 test("native publishing fields survive save, immutable exports, AI context, reopening and backup", async () => {
   const { base, root, workspace, w } = await setup();

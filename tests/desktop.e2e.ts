@@ -109,7 +109,40 @@ test("native platform forms, media formats, message editing and persisted metada
     await page.getByRole("button", { name: "新建内容", exact: true }).click();
     await page.getByLabel("主题名称", { exact: true }).fill("各平台发布准备");
     await page.getByRole("button", { name: "创建主题", exact: true }).click();
+    await expect(
+      page.getByLabel("Codex 任务方式", { exact: true }),
+    ).toHaveValue("task");
+    await expect(page.locator(".assistant-header")).toContainText(
+      "Full Access",
+    );
+    await expect(
+      page.getByLabel("Codex 参考版本", { exact: true }),
+    ).toHaveValue("");
+    await page
+      .getByRole("button", { name: "按当前平台与语言起草", exact: true })
+      .click();
+    await expect(
+      page.getByLabel("Codex 任务方式", { exact: true }),
+    ).toHaveValue("draft");
+    await page
+      .getByLabel("Codex 任务方式", { exact: true })
+      .selectOption("task");
     await addVariant(page, "youtube", "zh-CN", "这是视频简介。");
+    await expect(
+      page.getByLabel("Codex 参考版本", { exact: true }),
+    ).toHaveValue("");
+    await page
+      .getByLabel("Codex 任务方式", { exact: true })
+      .selectOption("draft");
+    await expect(
+      page.getByLabel("Codex 参考版本", { exact: true }),
+    ).not.toHaveValue("");
+    await page
+      .getByLabel("Codex 任务方式", { exact: true })
+      .selectOption("task");
+    await page
+      .getByLabel("Codex 参考版本", { exact: true })
+      .selectOption("");
     await page
       .getByLabel("视频可见性", { exact: true })
       .selectOption("unlisted");

@@ -134,7 +134,8 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
         .object({
           projectId: z.uuid(),
           contentId: z.uuid(),
-          variantId: z.uuid(),
+          variantId: z.uuid().optional(),
+          mode: z.enum(["draft", "task"]).optional(),
           prompt: z.string().min(1).max(20000),
           model: z.string().optional(),
         })

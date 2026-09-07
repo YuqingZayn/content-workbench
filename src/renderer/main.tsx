@@ -252,7 +252,10 @@ function App() {
     return api.onEvent((e) => {
       if (e.type === "codex-status")
         void api.call<CodexStatus>("codex.status").then(setCodex);
-      if (e.type === "run-status" && e.projectId === wRef.current?.project.id)
+      if (
+        ["run-status", "workspace-changed"].includes(e.type) &&
+        e.projectId === wRef.current?.project.id
+      )
         void refresh();
       if (e.type === "import-progress") setProgress(e.message ?? "");
     });
@@ -1793,6 +1796,7 @@ function Assistant({
   guard: React.MutableRefObject<() => Promise<boolean>>;
 }) {
   const [prompt, setPrompt] = useState(""),
+    [mode, setMode] = useState<"task" | "draft">("task"),
     [model, setModel] = useState(""),
     [variantId, setVariantId] = useState(content.variants[0]?.id ?? ""),
     [live, setLive] = useState(""),
@@ -1803,18 +1807,26 @@ function Assistant({
       ["running", "queued", "stopping"].includes(r.status),
     );
   useEffect(() => {
-    if (!variantId && content.variants.length)
+    if (
+      mode === "draft" &&
+      content.variants.length &&
+      !content.variants.some((v) => v.id === variantId)
+    )
       setVariantId(content.variants[0].id);
-  }, [content]);
+  }, [content, mode, variantId]);
   useEffect(
     () =>
       api.onEvent((e) => {
-        if (e.projectId === w.project.id && e.type === "codex-delta")
+        if (
+          e.projectId === w.project.id &&
+          e.type === "codex-delta" &&
+          runs.some((r) => r.id === e.runId)
+        )
           setLive((text) => text + (e.text ?? ""));
         if (e.projectId === w.project.id && e.type === "codex-activity")
           setActivity(e.message ?? "");
       }),
-    [w.project.id],
+    [w.project.id, w.runs, content.id],
   );
   const connect = async () => {
     setBusy(true);
@@ -1830,10 +1842,12 @@ function Assistant({
     if (!(await guard.current())) return;
     try {
       setLive("");
+      setActivity("");
       await api.call("codex.start", {
         projectId: w.project.id,
         contentId: content.id,
-        variantId,
+        variantId: variantId || undefined,
+        mode,
         prompt,
         model: model || undefined,
       });
@@ -1850,13 +1864,15 @@ function Assistant({
           <Sparkles size={18} />
         </div>
         <div>
-          <h2>Codex 内容助手</h2>
+          <h2>Codex 助手</h2>
           <small>
             <span className={`dot ${codex.state === "ready" ? "" : "gray"}`} />
             {codex.state === "ready" ? "本机已连接" : "等待连接"}
           </small>
         </div>
-        <span className="pill tiny">AI</span>
+        <span className="pill tiny" title="可读写本机文件、执行命令和联网">
+          Full Access
+        </span>
       </div>
       <div className="assistant-context">
         <Folder size={14} />
@@ -1868,7 +1884,7 @@ function Assistant({
           <div className="ai-welcome">
             <Sparkles size={27} />
             <h3>你的项目内容搭档</h3>
-            <p>基于当前身份、事实底稿与选定素材，起草更贴合平台的表达。</p>
+            <p>直接修改文件、执行命令、查找资料，也可以为当前平台起草内容。</p>
             <button
               className="secondary"
               disabled={busy}
@@ -1882,8 +1898,8 @@ function Assistant({
         {runs.length === 0 && codex.state === "ready" && (
           <div className="ai-welcome">
             <Sparkles size={27} />
-            <h3>今天，想表达什么？</h3>
-            <p>素材和身份已就位。给我一个方向，我们把它写成内容。</p>
+            <h3>这次需要完成什么？</h3>
+            <p>已开启完全访问权限。描述任务，或给出需要修改的文件路径。</p>
           </div>
         )}
         <div className="quick-actions">
@@ -1893,7 +1909,13 @@ function Assistant({
             "翻译成英文，保持语气自然",
             "整理为适合群聊的简洁文案",
           ].map((t) => (
-            <button key={t} onClick={() => setPrompt(t)}>
+            <button
+              key={t}
+              onClick={() => {
+                setMode("draft");
+                setPrompt(t);
+              }}
+            >
               <Sparkles size={13} />
               {t}
               <ArrowRight size={13} />
@@ -1940,11 +1962,25 @@ function Assistant({
       </div>
       <div className="assistant-input">
         <label>
-          写入版本
+          任务方式
           <select
+            aria-label="Codex 任务方式"
+            value={mode}
+            disabled={!!active}
+            onChange={(e) => setMode(e.target.value as "task" | "draft")}
+          >
+            <option value="task">执行任务</option>
+            <option value="draft">起草版本</option>
+          </select>
+        </label>
+        <label>
+          {mode === "draft" ? "写入版本" : "参考版本"}
+          <select
+            aria-label="Codex 参考版本"
             value={variantId}
             onChange={(e) => setVariantId(e.target.value)}
           >
+            {mode === "task" && <option value="">整个主题</option>}
             {content.variants.map((v) => (
               <option key={v.id} value={v.id}>
                 {getPlatformDefinition(w.platforms, v.platform).name} ·{" "}
@@ -1958,7 +1994,11 @@ function Assistant({
             aria-label="Codex 生成要求"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="描述你的想法，或选择一个动作…"
+            placeholder={
+              mode === "task"
+                ? "描述要执行的任务，可直接填写文件路径…"
+                : "描述文案要求，或选择一个动作…"
+            }
             rows={3}
           />
           <div>
@@ -1994,7 +2034,10 @@ function Assistant({
                 className="send-button"
                 aria-label="开始生成"
                 disabled={
-                  !prompt.trim() || !variantId || codex.state !== "ready"
+                  !prompt.trim() ||
+                  (mode === "draft" && !variantId) ||
+                  codex.state !== "ready" ||
+                  w.project.readOnly
                 }
                 onClick={() => void start()}
               >
@@ -2006,7 +2049,9 @@ function Assistant({
         <p>
           {active
             ? activity || "结果将写回发起任务的项目"
-            : "只读生成 · 有冲突时保留建议版本"}
+            : mode === "task"
+              ? "Full Access · 可改本机文件、执行命令和联网"
+              : "Full Access · 文案写回所选版本"}
         </p>
       </div>
     </aside>
@@ -3307,6 +3352,10 @@ function SettingsPage({
               {codex.message} {codex.version}
             </p>
             <small>使用本机 CLI 登录状态；模型目录在连接时读取。</small>
+            <p>执行权限：Full Access（完全访问）</p>
+            <small>
+              可读写当前系统账号可访问的本机文件、执行命令和联网，包含项目外目录。
+            </small>
           </div>
           <div className="button-row">
             <button

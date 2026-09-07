@@ -251,7 +251,9 @@ export interface AiRun {
   id: string;
   projectId: string;
   contentId: string;
-  variantId: string;
+  variantId?: string;
+  mode?: "draft" | "task";
+  access?: "full-access";
   baseRevision: number;
   threadId?: string;
   turnId?: string;

@@ -17,6 +17,7 @@
     "test:media": "npm run build && tsx --test tests/thumbnails.test.ts",
     "test:e2e": "npm run build && playwright test",
     "verify:codex": "tsx scripts/verify-codex.ts",
+    "verify:codex-access": "tsx scripts/verify-codex-full-access.ts",
     "verify:first-loop": "tsx scripts/verify-first-loop.ts",
     "test:package": "node scripts/smoke-package.mjs",
     "dist:win": "node scripts/ensure-runtime.mjs && npm run build && node scripts/dist-win.mjs",
