@@ -23,6 +23,190 @@ import {
 import type { Content } from "../src/contracts/model";
 import { platforms, type AiRun } from "../src/contracts/model";
 import { CodexService } from "../src/services/codex/service";
+import {
+  defaultPublishing,
+  type Publishing,
+  type NativePlatform,
+} from "../src/contracts/publishing";
+import type { Variant } from "../src/contracts/model";
+
+test("native publishing fields survive save, immutable exports, AI context, reopening and backup", async () => {
+  const { base, root, workspace, w } = await setup();
+  const ai = new CodexService(workspace, () => {});
+  try {
+    await workspace.importAssets(
+      w.project.id,
+      [path.resolve("tests/fixtures/demo-1.png")],
+      "copy",
+    );
+    const aid = workspace.load(w.project.id).assets[0].id;
+    const p = defaultPublishing();
+    p.youtube = {
+      format: "video",
+      visibility: "unlisted",
+      audience: "general",
+      playlist: "教程合集",
+      chapters: "00:00 开场\n00:30 演示\n02:00 总结",
+    };
+    p.bilibili = {
+      format: "video",
+      copyright: "repost",
+      source: "https://example.com/original",
+      category: "知识",
+      collection: "投稿合集",
+    };
+    p.douyin = { format: "images", location: "深圳", coverText: "三步上手" };
+    p.instagram = {
+      format: "feed",
+      location: "上海",
+      altText: { [aid]: "测试图片的替代描述" },
+    };
+    p.facebook = {
+      format: "link",
+      linkUrl: "https://example.com/story",
+      linkTitle: "链接备注",
+      audience: "朋友",
+    };
+    p.discord.format = "forum";
+    p.wechat.format = "announcement";
+    const cases: [NativePlatform, string][] = [
+      ["youtube", "可见性：不公开列出"],
+      ["bilibili", "转载来源：https://example.com/original"],
+      ["douyin", "封面文案：三步上手"],
+      ["instagram", "测试图片的替代描述"],
+      ["facebook", "链接：https://example.com/story"],
+      ["discord", "论坛标签：公告"],
+      ["wechat", "发布类型：群公告"],
+    ];
+    for (const [platform, expected] of cases) {
+      let content = workspace.createContent(
+        w.project.id,
+        `${platform} 本地验收`,
+      );
+      content = workspace.addVariant(
+        w.project.id,
+        content.id,
+        platform,
+        "zh-CN",
+      );
+      const v = content.variants[0];
+      content = workspace.saveVariant(w.project.id, content.id, {
+        variant: {
+          ...v,
+          title: "测试标题",
+          body: "第一段\n\n第二段",
+          tags: ["公告"],
+          publishing: p,
+          assetIds: [aid],
+        },
+        baseRevision: v.revision,
+        baseHash: v.bodyHash,
+      });
+      content = ready(workspace, w.project.id, content, "第一段\n\n第二段", [
+        aid,
+      ]);
+      const saved = content.variants[0];
+      const account = workspace
+        .addAccount(w.project.id, {
+          platform,
+          label: "验收账号",
+          externalId: "",
+          accountType: "profile",
+        })
+        .accounts.at(-1)!;
+      const target = workspace
+        .addTarget(w.project.id, {
+          accountId: account.id,
+          label: "验收目标",
+          kind: "channel",
+        })
+        .targets.at(-1)!;
+      const [job] = await workspace.schedule(w.project.id, {
+        contentId: content.id,
+        variantId: saved.id,
+        targetIds: [target.id],
+        scheduledAtUtc: "2030-01-01T00:00:00Z",
+        timezone: "Asia/Shanghai",
+      });
+      // Changing the draft and platform after scheduling must not rewrite the export.
+      workspace.saveVariant(w.project.id, content.id, {
+        variant: { ...saved, publishing: defaultPublishing() },
+        baseRevision: saved.revision,
+        baseHash: saved.bodyHash,
+      });
+      workspace.savePlatform(w.project.id, {
+        id: platform,
+        name: `${platform} 新名称`,
+        color: "#345678",
+        composer: "article",
+      });
+      const exported = workspace.exportJob(w.project.id, job.id);
+      const info = readFileSync(path.join(exported, "发布信息.md"), "utf8");
+      assert.ok(info.includes(expected), `${platform}: ${info}`);
+      const manifest = readJson<{ variant: Variant }>(
+        path.join(exported, "manifest.json"),
+      );
+      assert.deepEqual(manifest.variant.publishing, p);
+      if (platform === "youtube")
+        assert.match(
+          readFileSync(path.join(exported, "正文.md"), "utf8"),
+          /02:00 总结/,
+        );
+      if (platform === "facebook")
+        assert.match(
+          readFileSync(path.join(exported, "发送顺序.md"), "utf8"),
+          /https:\/\/example.com\/story/,
+        );
+      // Save the platform-specific draft again for restart and AI-context checks.
+      const current = workspace.getContent(w.project.id, content.id)
+        .variants[0];
+      workspace.saveVariant(w.project.id, content.id, {
+        variant: { ...current, publishing: p },
+        baseRevision: current.revision,
+        baseHash: current.bodyHash,
+      });
+    }
+    ai.status = {
+      state: "ready",
+      message: "local simulation",
+      version: "test",
+      models: [],
+    };
+    ai.active = {} as AiRun;
+    const content = workspace
+      .load(w.project.id)
+      .contents.find((c) => c.variants[0].platform === "youtube")!;
+    const run = ai.start({
+      projectId: w.project.id,
+      contentId: content.id,
+      variantId: content.variants[0].id,
+      prompt: "仅检查上下文",
+    });
+    const context = readJson<{ variant: { publishing: Publishing } }>(
+      path.join(root, `.content-workspace/ai-runs/${run.id}/input.json`),
+    );
+    assert.equal(context.variant.publishing.youtube.playlist, "教程合集");
+    ai.queue = [];
+    ai.active = undefined;
+    workspace.close(w.project.id);
+    const reopened = await workspace.open(root);
+    for (const c of reopened.contents)
+      assert.deepEqual(c.variants[0].publishing, p);
+    const backup = path.join(base, "native-platform-backup");
+    workspace.backup(w.project.id, backup, true);
+    workspace.close(w.project.id);
+    const restored = await workspace.restore(
+      backup,
+      path.join(base, "native-platform-restored"),
+    );
+    for (const c of restored.contents)
+      assert.deepEqual(c.variants[0].publishing, p);
+  } finally {
+    ai.active = undefined;
+    ai.queue = [];
+    workspace.closeAll();
+  }
+});
 const image = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1foAAAAASUVORK5CYII=",
   "base64",

@@ -41,6 +41,12 @@ import {
 } from "../contracts/model";
 import { StateDatabase } from "../storage/database";
 import {
+  defaultPublishing,
+  publicationBody,
+  publicationFields,
+  publicationSegments,
+} from "../contracts/publishing";
+import {
   AppError,
   now,
   uuid,
@@ -897,41 +903,29 @@ export class WorkspaceService {
         throw new AppError("ASSET_CHANGED", "素材已改变，请重新导入后安排任务");
       media[aid] = { file: filename, sha256: asset.sha256 };
     }
-    const segments = v.segments.length
-      ? v.segments
-      : [
-          ...(v.body.trim()
-            ? [
-                {
-                  type: "text" as const,
-                  text:
-                    v.body +
-                    (v.tags.length &&
-                    !["video", "article"].includes(platform.composer)
-                      ? "\n\n" +
-                        v.tags.map((t) => "#" + t.replace(/^#/, "")).join(" ")
-                      : ""),
-                },
-              ]
-            : []),
-          ...v.assetIds.map((aid) => ({
-            type: this.mediaPath(id, aid).asset.kind,
-            assetId: aid,
-          })),
-        ];
+    const segments = publicationSegments(
+      v,
+      platform,
+      v.assetIds.map((aid) => this.mediaPath(id, aid).asset),
+    );
+    const publishingFields = publicationFields(v, platform);
+    const body = publicationBody(v, platform);
     const snapshot = {
       schemaVersion: 1,
       id: sid,
       projectId: id,
       variant: v,
       platform,
+      publishingFields,
       segments,
       media,
       createdAt: now(),
-      payloadHash: hash(json({ v, platform, segments, media })),
+      payloadHash: hash(
+        json({ v, platform, publishingFields, body, segments, media }),
+      ),
     };
     writeJson(path.join(snapshotRoot, "manifest.json"), snapshot);
-    atomicWrite(path.join(snapshotRoot, "正文.md"), v.body);
+    atomicWrite(path.join(snapshotRoot, "正文.md"), body);
     const jobs = selected.map(
       ({ target, account }): Job => ({
         id: uuid(),
@@ -995,6 +989,7 @@ export class WorkspaceService {
     this.copySafeTree(source, target);
     const snapshot = readJson<{
       platform?: PlatformDefinition;
+      publishingFields?: [string, string][];
       variant: Variant;
       segments: Variant["segments"];
       media: Record<string, { file: string }>;
@@ -1015,16 +1010,39 @@ export class WorkspaceService {
       [
         `# ${snapshot.variant.title}`,
         `平台：${snapshot.platform?.name ?? this.requirePlatform(id, job.platform).name}`,
+        ...(snapshot.publishingFields ?? []).map(
+          ([key, value]) => `${key}：${value}`,
+        ),
         `话题 / 关键词：${snapshot.variant.tags.join(" ")}`,
         `封面文件：${snapshot.variant.coverId ? (snapshot.media[snapshot.variant.coverId]?.file ?? "") : ""}`,
-        ...(article
+        ...(article &&
+        (snapshot.platform?.composer === "article" ||
+          article.author ||
+          article.digest ||
+          article.sourceUrl)
           ? [
               `作者：${article.author}`,
               `摘要：${article.digest}`,
               `原文链接：${article.sourceUrl}`,
             ]
           : []),
-        "标题、作者、摘要、封面和关键词请按目标平台的对应字段填写。正文见 正文.md。",
+        ...(snapshot.variant.platform === "instagram" &&
+        (snapshot.variant.publishing ?? defaultPublishing()).instagram
+          .format === "feed"
+          ? Object.entries(
+              (snapshot.variant.publishing ?? defaultPublishing()).instagram
+                .altText,
+            )
+              .filter(
+                ([aid, value]) =>
+                  snapshot.variant.assetIds.includes(aid) && value.trim(),
+              )
+              .map(
+                ([aid, value]) =>
+                  `图片替代文字（${snapshot.media[aid]?.file ?? aid}）：${value}`,
+              )
+          : []),
+        "请在目标平台填写这些字段并确认可见范围等设置。正文见 正文.md；若自定义了消息段，以 发送顺序.md 为准。关联素材均保留在包内，视频发布时请区分视频与封面。导出不会修改平台上的设置或发送内容。",
       ].join("\n\n"),
     );
     writeJson(path.join(target, "target.json"), { ...job, exportedAt: now() });

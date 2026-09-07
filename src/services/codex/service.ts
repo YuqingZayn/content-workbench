@@ -8,6 +8,7 @@ import type {
   Variant,
 } from "../../contracts/model";
 import type { WorkspaceService } from "../workspace";
+import { composerFor, publicationFields } from "../../contracts/publishing";
 import {
   AppError,
   uuid,
@@ -157,6 +158,7 @@ export class CodexService {
       createdAt: now(),
     };
     const w = this.workspace.load(project.id);
+    const platform = this.workspace.requirePlatform(project.id, v.platform);
     const context = {
       project: { name: project.name, identityType: project.identityType },
       profile: w.profile,
@@ -164,7 +166,11 @@ export class CodexService {
       audience: content.audience,
       objective: content.objective,
       variant: v,
-      platform: this.workspace.requirePlatform(project.id, v.platform),
+      platform,
+      publishing: {
+        composer: composerFor(v, platform),
+        fields: publicationFields(v, platform),
+      },
       allowedAssets: w.assets
         .filter((a) => v.assetIds.includes(a.id) || v.coverId === a.id)
         .map((a) => ({ id: a.id, name: a.name, kind: a.kind })),

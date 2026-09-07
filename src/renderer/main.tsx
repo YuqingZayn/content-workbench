@@ -54,6 +54,15 @@ import {
 import "./style.css";
 import { AssetPreview } from "./AssetPreview";
 import {
+  composerFor,
+  defaultPublishing,
+  publicationSegments,
+  publicationFormat,
+  nativePlatform,
+  splitMessages,
+} from "../contracts/publishing";
+import { PublishingFields, PublishingSummary } from "./PublishingFields";
+import {
   PlatformFields,
   PlatformPreview,
   composerHeadings,
@@ -964,8 +973,26 @@ function Editor({
     }
   };
   const composer = draft
-    ? getPlatformDefinition(w.platforms, draft.platform).composer
+    ? composerFor(draft, getPlatformDefinition(w.platforms, draft.platform))
     : "post";
+  const effectiveSegments = draft
+    ? publicationSegments(
+        draft,
+        getPlatformDefinition(w.platforms, draft.platform),
+        w.assets,
+      )
+    : [];
+  const activeFormat = draft
+    ? publicationFormat(
+        draft,
+        getPlatformDefinition(w.platforms, draft.platform),
+      )
+    : undefined;
+  const isStory =
+    draft &&
+    nativePlatform(getPlatformDefinition(w.platforms, draft.platform)) ===
+      "instagram" &&
+    (draft.publishing ?? defaultPublishing()).instagram.format === "story";
   const bindings =
     draft?.assetIds
       .map((id) => w.assets.find((a) => a.id === id))
@@ -1071,7 +1098,11 @@ function Editor({
           <div className="compose-grid" data-composer={composer}>
             <div className="compose-fields">
               <div className="section-heading">
-                <h2>{composerHeadings[composer]}</h2>
+                <h2>
+                  {activeFormat
+                    ? `${getPlatformDefinition(w.platforms, draft.platform).name} · ${activeFormat.label}`
+                    : composerHeadings[composer]}
+                </h2>
                 <span
                   className={`state ${draft.readiness === "ready" ? "green" : ""}`}
                 >
@@ -1079,6 +1110,7 @@ function Editor({
                   {draft.revision}
                 </span>
               </div>
+              <PublishingFields w={w} draft={draft} change={change} />
               <PlatformFields w={w} draft={draft} change={change} />
               <div className="compose-media">
                 <div className="section-heading media-heading">
@@ -1139,6 +1171,7 @@ function Editor({
                           <ArrowDown size={14} />
                         </button>
                         {a.kind === "image" &&
+                          !isStory &&
                           !["post", "chat"].includes(composer) && (
                             <button
                               className="icon"
@@ -1207,7 +1240,10 @@ function Editor({
                     </span>
                   </div>
                   <p className="hint">
-                    未自定义时，按正文、关联素材顺序生成。已发送的每一段可独立记录。
+                    {draft.segments.length
+                      ? "当前按下方消息段发布；上方正文作为写作底稿，修改底稿不会覆盖这些消息段。"
+                      : "未自定义时，按正文、关联素材顺序生成。"}
+                    已发送的每一段可独立记录。
                   </p>
                   {draft.segments.map((s, i) => (
                     <div className="segment" key={i}>
@@ -1253,6 +1289,27 @@ function Editor({
                           </span>
                         )}
                       </div>
+                      {(s.type === "text" || s.type === "link") && (
+                        <button
+                          className="icon"
+                          aria-label={`复制消息段 ${i + 1}`}
+                          onClick={() =>
+                            void call(async () => {
+                              await api.call("clipboard.copy", {
+                                text:
+                                  s.type === "text"
+                                    ? s.text
+                                    : [s.label, s.url]
+                                        .filter(Boolean)
+                                        .join("\n"),
+                              });
+                              notice(`已复制第 ${i + 1} 段`);
+                            })
+                          }
+                        >
+                          <Copy size={13} />
+                        </button>
+                      )}
                       <button
                         className="icon"
                         disabled={i === 0}
@@ -1284,10 +1341,25 @@ function Editor({
                   <div className="button-row">
                     <button
                       className="secondary small-button"
+                      disabled={draft.segments.length > 0 || !draft.body.trim()}
+                      onClick={() =>
+                        change({
+                          segments: splitMessages(
+                            draft,
+                            getPlatformDefinition(w.platforms, draft.platform),
+                            w.assets,
+                          ),
+                        })
+                      }
+                    >
+                      按空行拆分正文
+                    </button>
+                    <button
+                      className="secondary small-button"
                       onClick={() =>
                         change({
                           segments: [
-                            ...draft.segments,
+                            ...effectiveSegments,
                             { type: "text", text: "" },
                           ],
                         })
@@ -1301,7 +1373,7 @@ function Editor({
                       onClick={() =>
                         change({
                           segments: [
-                            ...draft.segments,
+                            ...effectiveSegments,
                             { type: "link", url: "https://", label: "链接" },
                           ],
                         })
@@ -1316,11 +1388,18 @@ function Editor({
                       onClick={() =>
                         change({
                           segments: [
-                            ...draft.segments,
-                            ...bindings.map((a) => ({
-                              type: a.kind,
-                              assetId: a.id,
-                            })),
+                            ...effectiveSegments,
+                            ...bindings
+                              .filter(
+                                (a) =>
+                                  !effectiveSegments.some(
+                                    (s) => "assetId" in s && s.assetId === a.id,
+                                  ),
+                              )
+                              .map((a) => ({
+                                type: a.kind,
+                                assetId: a.id,
+                              })),
                           ],
                         })
                       }
@@ -1342,6 +1421,7 @@ function Editor({
                 draft={draft}
                 bindings={bindings}
               />
+              <PublishingSummary w={w} draft={draft} />
               <p className="hint centered">平台最终排版以实际客户端为准</p>
               <div className="preview-guidance">
                 <CheckCircle2 size={16} />
@@ -1524,6 +1604,12 @@ function Editor({
                           title: v.title,
                           body: v.body,
                           tags: v.tags,
+                          article: v.article ?? {
+                            author: "",
+                            digest: "",
+                            sourceUrl: "",
+                          },
+                          publishing: v.publishing ?? defaultPublishing(),
                           assetIds: v.assetIds,
                           coverId: v.coverId,
                           segments: v.segments,

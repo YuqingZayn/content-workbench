@@ -14,6 +14,13 @@ import {
   type Workspace,
   type Asset,
 } from "../contracts/model";
+import {
+  composerFor,
+  defaultPublishing,
+  nativePlatform,
+  publicationBody,
+  publicationSegments,
+} from "../contracts/publishing";
 import { AssetPreview, previewUrl } from "./AssetPreview";
 
 export const composerHeadings: Record<ComposerMode, string> = {
@@ -55,7 +62,12 @@ export function PlatformFields({
   draft: Variant;
   change: (patch: Partial<Variant>) => void;
 }) {
-  const mode = getPlatformDefinition(w.platforms, draft.platform).composer;
+  const definition = getPlatformDefinition(w.platforms, draft.platform);
+  const mode = composerFor(draft, definition);
+  const platform = nativePlatform(definition);
+  const publishing = draft.publishing ?? defaultPublishing();
+  const forum = platform === "discord" && publishing.discord.format === "forum";
+  const publicTitle = showsTitle(mode) || platform === "youtube" || forum;
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const format = (before: string, after = "") => {
     const area = bodyRef.current;
@@ -77,11 +89,13 @@ export function PlatformFields({
   };
   const title = (
     <label>
-      {mode === "article"
-        ? "文章标题"
-        : mode === "video"
-          ? "视频标题"
-          : "笔记标题"}
+      {forum
+        ? "论坛标题"
+        : mode === "article"
+          ? "文章标题"
+          : mode === "video" || platform === "youtube"
+            ? "视频标题"
+            : "笔记标题"}
       <input
         aria-label="版本标题"
         value={draft.title}
@@ -91,7 +105,11 @@ export function PlatformFields({
   );
   const tags = (
     <label>
-      {mode === "video" ? "视频关键词" : "话题标签"}
+      {forum
+        ? "论坛标签"
+        : mode === "video" || platform === "youtube"
+          ? "视频关键词"
+          : "话题标签"}
       <input
         value={draft.tags.join(" ")}
         onChange={(e) =>
@@ -108,7 +126,7 @@ export function PlatformFields({
   );
   return (
     <div className="compose-text">
-      {showsTitle(mode) && title}
+      {publicTitle && title}
       {mode === "article" && (
         <div className="article-metadata">
           <label>
@@ -155,8 +173,31 @@ export function PlatformFields({
           </button>
         </div>
       )}
+      {platform === "discord" && (
+        <div className="article-toolbar" aria-label="Discord 排版工具">
+          <button type="button" onClick={() => format("**", "**")}>
+            加粗
+          </button>
+          <button type="button" onClick={() => format("`", "`")}>
+            行内代码
+          </button>
+          <button type="button" onClick={() => format("\n```\n", "\n```\n")}>
+            代码块
+          </button>
+          <button type="button" onClick={() => format("||", "||")}>
+            剧透遮罩
+          </button>
+          <button type="button" onClick={() => format("\n> ")}>
+            引用
+          </button>
+        </div>
+      )}
       <label>
-        {bodyLabels[mode]}
+        {platform === "wechat" && publishing.wechat.format === "announcement"
+          ? "群公告正文"
+          : platform === "instagram" && publishing.instagram.format === "story"
+            ? "Story 配字备注"
+            : bodyLabels[mode]}
         <textarea
           ref={bodyRef}
           className={`body-editor body-${mode}`}
@@ -176,8 +217,10 @@ export function PlatformFields({
         </span>
         <span>{[...draft.body].length} 字符</span>
       </div>
-      {showsTitle(mode) && mode !== "article" && tags}
-      {mode === "photo" || mode === "short_video" ? tags : null}
+      {publicTitle && mode !== "article" && tags}
+      {!publicTitle && (mode === "photo" || mode === "short_video")
+        ? tags
+        : null}
       {mode === "article" && (
         <label>
           原文链接（选填）
@@ -193,7 +236,7 @@ export function PlatformFields({
           />
         </label>
       )}
-      {!showsTitle(mode) && (
+      {!publicTitle && (
         <details className="composer-extra">
           <summary>
             内部名称{mode === "post" || mode === "chat" ? "与话题" : ""}
@@ -217,20 +260,72 @@ function PreviewMedia({
   asset,
   w,
   cover,
+  alt,
 }: {
   asset: Asset;
   w: Workspace;
   cover?: Asset;
+  alt?: string;
 }) {
+  const [playing, setPlaying] = useState(false);
   return asset.kind === "image" ? (
-    <AssetPreview projectId={w.project.id} asset={asset} alt={asset.name} />
+    <AssetPreview
+      projectId={w.project.id}
+      asset={asset}
+      alt={alt || asset.name}
+    />
+  ) : !playing ? (
+    <button
+      type="button"
+      className="preview-video-button"
+      aria-label={`播放预览 ${asset.name}`}
+      onClick={() => setPlaying(true)}
+    >
+      {cover && (
+        <AssetPreview projectId={w.project.id} asset={cover} alt="视频封面" />
+      )}
+      <span>
+        <Play size={30} />
+        点击播放视频
+      </span>
+    </button>
   ) : (
     <video
       src={`media://asset/${w.project.id}/${asset.id}?revision=${asset.sha256}`}
       poster={cover ? previewUrl(w.project.id, cover) : undefined}
       controls
-      preload="none"
+      autoPlay
+      preload="metadata"
     />
+  );
+}
+
+function DiscordText({ text }: { text: string }) {
+  return (
+    <div className="discord-markdown">
+      {text
+        .split(/(```[\s\S]*?```|`[^`\n]+`|\|\|[\s\S]*?\|\||\*\*[^*]+\*\*)/)
+        .map((part, index) => {
+          if (part.startsWith("```"))
+            return (
+              <pre key={index}>
+                <code>{part.slice(3, -3).replace(/^\w*\n/, "")}</code>
+              </pre>
+            );
+          if (part.startsWith("`"))
+            return <code key={index}>{part.slice(1, -1)}</code>;
+          if (part.startsWith("||"))
+            return (
+              <details className="discord-spoiler" key={index}>
+                <summary>剧透 · 点击展开</summary>
+                {part.slice(2, -2)}
+              </details>
+            );
+          if (part.startsWith("**"))
+            return <strong key={index}>{part.slice(2, -2)}</strong>;
+          return <span key={index}>{part}</span>;
+        })}
+    </div>
   );
 }
 
@@ -274,19 +369,22 @@ export function PlatformPreview({
   bindings: Asset[];
 }) {
   const definition = getPlatformDefinition(w.platforms, draft.platform);
-  const mode = definition.composer;
+  const mode = composerFor(draft, definition);
+  const platform = nativePlatform(definition);
+  const p = draft.publishing ?? defaultPublishing();
+  const isStory = platform === "instagram" && p.instagram.format === "story";
+  const body = publicationBody(draft, definition);
   const [index, setIndex] = useState(0);
   const cover = w.assets.find(
     (a) => a.id === draft.coverId && a.kind === "image",
   );
   const ordered =
-    cover && ["note", "photo", "article"].includes(mode)
+    cover && ["note", "photo", "article"].includes(mode) && !isStory
       ? [cover, ...bindings.filter((a) => a.id !== cover.id)]
       : bindings;
   const currentIndex = Math.min(index, Math.max(0, ordered.length - 1));
   const media = ordered[currentIndex];
   const video = bindings.find((a) => a.kind === "video");
-  const hashtags = draft.tags.map((t) => "#" + t).join(" ");
   const account = (
     <div className="preview-account">
       <div className="avatar small">{w.project.name.trim().slice(0, 1)}</div>
@@ -299,7 +397,16 @@ export function PlatformPreview({
   const carousel = (
     <div className={`preview-media carousel ${media ? "" : "carousel-empty"}`}>
       {media ? (
-        <PreviewMedia asset={media} w={w} cover={cover} />
+        <PreviewMedia
+          asset={media}
+          w={w}
+          cover={cover}
+          alt={
+            platform === "instagram" && p.instagram.format === "feed"
+              ? p.instagram.altText[media.id]
+              : undefined
+          }
+        />
       ) : (
         <span>选择图片后显示预览</span>
       )}
@@ -365,38 +472,49 @@ export function PlatformPreview({
       </article>
     );
   if (mode === "chat") {
-    const segments = draft.segments.length
-      ? draft.segments
-      : [
-          ...(draft.body || hashtags
-            ? [
-                {
-                  type: "text" as const,
-                  text: [draft.body, hashtags].filter(Boolean).join("\n\n"),
-                },
-              ]
-            : []),
-          ...bindings.map((a) => ({ type: a.kind, assetId: a.id })),
-        ];
+    const segments = publicationSegments(draft, definition, w.assets);
     return (
-      <div className="post-preview chat-preview" data-preview="chat">
+      <div
+        className={`post-preview chat-preview ${platform === "discord" ? "discord-preview" : ""}`}
+        data-preview="chat"
+      >
+        {platform === "discord" && (
+          <div className="channel-heading">
+            {p.discord.format === "forum" ? "论坛 · 讨论帖" : "# 频道消息"}
+          </div>
+        )}
+        {platform === "wechat" && p.wechat.format === "announcement" && (
+          <div className="channel-heading">群公告</div>
+        )}
         {account}
+        {platform === "discord" && p.discord.format === "forum" && (
+          <div className="forum-heading">
+            <h3>{draft.title || "论坛标题"}</h3>
+            <div className="forum-tags">
+              {draft.tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="chat-messages">
           {segments.length ? (
             segments.map((s, i) => (
               <div className="chat-bubble" key={i}>
-                {s.type === "text"
-                  ? s.text
-                  : s.type === "link"
-                    ? `${s.label}\n${s.url}`
-                    : (() => {
-                        const a = w.assets.find((a) => a.id === s.assetId);
-                        return a ? (
-                          <PreviewMedia asset={a} w={w} />
-                        ) : (
-                          "素材不可用"
-                        );
-                      })()}
+                {s.type === "text" ? (
+                  platform === "discord" ? (
+                    <DiscordText text={s.text} />
+                  ) : (
+                    s.text
+                  )
+                ) : s.type === "link" ? (
+                  `${s.label}\n${s.url}`
+                ) : (
+                  (() => {
+                    const a = w.assets.find((a) => a.id === s.assetId);
+                    return a ? <PreviewMedia asset={a} w={w} /> : "素材不可用";
+                  })()
+                )}
               </div>
             ))
           ) : (
@@ -411,9 +529,15 @@ export function PlatformPreview({
       <div className="post-preview timeline-preview" data-preview="post">
         {account}
         <div className="preview-copy">
-          <p>{draft.body || "帖子正文会显示在这里。"}</p>
-          <div className="hashtags">{hashtags}</div>
+          <p>{body || "帖子正文会显示在这里。"}</p>
         </div>
+        {platform === "facebook" && p.facebook.format === "link" && (
+          <div className="facebook-link-card">
+            <small>{p.facebook.linkUrl || "分享链接"}</small>
+            <strong>{p.facebook.linkTitle || "链接卡片"}</strong>
+            <small>卡片标题与封面以网页信息为准</small>
+          </div>
+        )}
         {bindings.length > 0 && (
           <div
             className={`post-media-grid ${bindings.length === 1 ? "single" : ""}`}
@@ -426,9 +550,25 @@ export function PlatformPreview({
           </div>
         )}
         <div className="post-preview-actions" aria-hidden="true">
-          <MessageCircle size={17} />
-          <Repeat2 size={17} />
-          <Heart size={17} />
+          {platform === "facebook" ? (
+            <>
+              <span>赞</span>
+              <span>评论</span>
+              <span>分享</span>
+            </>
+          ) : platform === "bilibili" ? (
+            <>
+              <span>转发</span>
+              <span>评论</span>
+              <span>点赞</span>
+            </>
+          ) : (
+            <>
+              <MessageCircle size={17} />
+              <Repeat2 size={17} />
+              <Heart size={17} />
+            </>
+          )}
         </div>
       </div>
     );
@@ -453,27 +593,43 @@ export function PlatformPreview({
               <p>选择视频后显示预览</p>
             </div>
           )}
+          {platform === "douyin" && p.douyin.coverText && (
+            <div className="cover-caption">{p.douyin.coverText}</div>
+          )}
         </div>
         <div className="preview-copy">
-          {mode === "video" && <h3>{draft.title || "视频标题"}</h3>}
+          {(mode === "video" || platform === "youtube") && (
+            <h3>{draft.title || "视频标题"}</h3>
+          )}
           <small className="muted">{w.project.name}</small>
-          <p>{draft.body || "视频描述会显示在这里。"}</p>
-          <div className="hashtags">{draft.tags.join(" · ")}</div>
+          <p>{body || "视频描述会显示在这里。"}</p>
+          {(mode === "video" || platform === "youtube") && (
+            <div className="hashtags">关键词：{draft.tags.join(" · ")}</div>
+          )}
         </div>
       </div>
     );
   return (
     <div
-      className={`post-preview note-preview ${mode === "photo" ? "photo-preview" : ""}`}
+      className={`post-preview note-preview ${mode === "photo" ? "photo-preview" : ""} ${isStory ? "story-preview" : ""} ${platform === "douyin" ? "douyin-images-preview" : ""}`}
       data-preview={mode}
     >
       {mode === "photo" && account}
+      {isStory && (
+        <div className="story-progress" aria-hidden="true">
+          {ordered.map((a, i) => (
+            <span key={a.id} className={i <= currentIndex ? "active" : ""} />
+          ))}
+        </div>
+      )}
       {carousel}
+      {platform === "douyin" && p.douyin.coverText && (
+        <div className="image-cover-caption">{p.douyin.coverText}</div>
+      )}
       {mode === "note" && account}
       <div className="preview-copy">
         {mode === "note" && <h3>{draft.title || "笔记标题"}</h3>}
-        <p>{draft.body || "配文会显示在这里。"}</p>
-        <div className="hashtags">{hashtags}</div>
+        <p>{body || "配文会显示在这里。"}</p>
       </div>
     </div>
   );

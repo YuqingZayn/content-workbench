@@ -69,6 +69,253 @@ async function addVariant(
   await expect(page.locator(".save-state")).toHaveText("已保存到本地");
 }
 
+test("native platform forms, media formats, message editing and persisted metadata", async () => {
+  const root = path.join(base, "平台专用发布验收");
+  mkdirSync(root);
+  let { app, page } = await launch();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const save = async () => {
+    await page.getByRole("button", { name: "保存草稿", exact: true }).click();
+    await expect(page.locator(".save-state")).toHaveText("已保存到本地");
+  };
+  const attach = async (names: string[]) => {
+    await page.getByRole("button", { name: "选择素材", exact: true }).click();
+    for (const name of names)
+      await page.locator(".asset-pick").filter({ hasText: name }).click();
+    await page.getByRole("button", { name: "完成选择", exact: true }).click();
+  };
+  const screenshot = async (name: string) => {
+    await page.locator(".editor-scroll").evaluate((el) => {
+      el.scrollTop = 0;
+    });
+    await page.screenshot({ path: `.local/e2e-evidence/native-${name}.png` });
+  };
+  try {
+    await dialogFiles(app, [root]);
+    await page
+      .getByRole("button", { name: "打开本地文件夹", exact: true })
+      .click();
+    await page.getByRole("button", { name: "素材库", exact: true }).click();
+    await dialogFiles(
+      app,
+      ["demo-1.png", "demo-2.png", "demo-h264.mp4"].map((f) =>
+        path.resolve("tests/fixtures", f),
+      ),
+    );
+    await page.getByRole("button", { name: "导入素材", exact: true }).click();
+    await expect(page.locator(".asset-card")).toHaveCount(3);
+    await page.getByRole("button", { name: "内容库", exact: true }).click();
+    await page.getByRole("button", { name: "新建内容", exact: true }).click();
+    await page.getByLabel("主题名称", { exact: true }).fill("各平台发布准备");
+    await page.getByRole("button", { name: "创建主题", exact: true }).click();
+    await addVariant(page, "youtube", "zh-CN", "这是视频简介。");
+    await page
+      .getByLabel("视频可见性", { exact: true })
+      .selectOption("unlisted");
+    await page
+      .getByLabel("是否面向儿童", { exact: true })
+      .selectOption("general");
+    await page.getByLabel("播放列表", { exact: true }).fill("入门教程");
+    await page
+      .getByLabel("章节时间轴", { exact: true })
+      .fill("00:00 开场\n00:30 演示\n02:00 总结");
+    await attach(["demo-h264.mp4", "demo-1.png"]);
+    await expect(page.locator(".video-stage video")).toHaveCount(0);
+    await page.getByRole("button", { name: "设置封面 2", exact: true }).click();
+    await page
+      .getByRole("button", { name: "播放预览 demo-h264.mp4", exact: true })
+      .click();
+    await expect
+      .poll(() =>
+        page
+          .locator(".video-stage video")
+          .evaluate((video: HTMLVideoElement) => video.readyState),
+      )
+      .toBeGreaterThanOrEqual(2);
+    await expect(page.locator(".video-preview")).toContainText("02:00 总结");
+    await page.getByLabel("发布类型", { exact: true }).selectOption("shorts");
+    await expect(page.locator('[data-composer="short_video"]')).toBeVisible();
+    await expect(page.getByLabel("版本标题", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("章节时间轴", { exact: true })).toHaveCount(0);
+    await expect(page.locator(".video-preview")).not.toContainText(
+      "02:00 总结",
+    );
+    await page.getByLabel("发布类型", { exact: true }).selectOption("video");
+    await expect(page.getByLabel("章节时间轴", { exact: true })).toHaveValue(
+      "00:00 开场\n00:30 演示\n02:00 总结",
+    );
+    await save();
+    await screenshot("youtube");
+    await addVariant(page, "bilibili", "zh-CN", "B站投稿简介");
+    await page.getByLabel("投稿类型", { exact: true }).selectOption("repost");
+    await page
+      .getByLabel("转载来源", { exact: true })
+      .fill("https://example.com/original");
+    await page.getByLabel("投稿分区", { exact: true }).fill("知识");
+    await page.getByLabel("所属合集", { exact: true }).fill("学习记录");
+    await page.getByLabel("发布类型", { exact: true }).selectOption("dynamic");
+    await expect(page.getByLabel("投稿分区", { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("版本标题", { exact: true })).toBeHidden();
+    await expect(page.locator(".post-preview-actions")).toContainText("转发");
+    await page.getByLabel("发布类型", { exact: true }).selectOption("video");
+    await expect(page.getByLabel("转载来源", { exact: true })).toHaveValue(
+      "https://example.com/original",
+    );
+    await save();
+    await screenshot("bilibili");
+    await addVariant(page, "douyin", "zh-CN", "抖音图文配文");
+    await page.getByLabel("发布类型", { exact: true }).selectOption("images");
+    await attach(["demo-1.png", "demo-2.png"]);
+    await page.getByLabel("作品位置", { exact: true }).fill("深圳");
+    await page.getByLabel("封面文案", { exact: true }).fill("三步上手");
+    await expect(page.locator(".douyin-images-preview")).toContainText(
+      "三步上手",
+    );
+    await save();
+    await screenshot("douyin");
+    await addVariant(page, "instagram", "en", "A visual story");
+    await attach(["demo-1.png", "demo-2.png"]);
+    await page.getByLabel("帖子位置", { exact: true }).fill("Shanghai");
+    await page
+      .getByLabel("图片替代文字 · demo-1.png", { exact: true })
+      .fill("A synthetic demo picture");
+    await expect(
+      page.locator(".photo-preview .preview-media img"),
+    ).toHaveAttribute("alt", "A synthetic demo picture");
+    await page.getByLabel("发布类型", { exact: true }).selectOption("reel");
+    await expect(page.locator('[data-preview="short_video"]')).toBeVisible();
+    await page.getByLabel("发布类型", { exact: true }).selectOption("story");
+    await expect(page.locator(".story-preview .preview-media")).toHaveCSS(
+      "aspect-ratio",
+      "9 / 16",
+    );
+    await page.getByRole("button", { name: "下一张预览", exact: true }).click();
+    await expect(page.locator(".story-preview img")).toHaveAttribute(
+      "alt",
+      "demo-2.png",
+    );
+    await page.getByLabel("发布类型", { exact: true }).selectOption("feed");
+    await expect(
+      page.getByLabel("图片替代文字 · demo-1.png", { exact: true }),
+    ).toHaveValue("A synthetic demo picture");
+    await save();
+    await screenshot("instagram");
+    await addVariant(page, "facebook", "en", "Read this update");
+    await page.getByLabel("发布类型", { exact: true }).selectOption("link");
+    await page
+      .getByLabel("分享链接", { exact: true })
+      .fill("https://example.com/update");
+    await page
+      .getByLabel("链接标题备注", { exact: true })
+      .fill("Project update");
+    await page.getByLabel("预期可见范围", { exact: true }).fill("朋友");
+    await expect(page.locator(".facebook-link-card")).toContainText(
+      "Project update",
+    );
+    await expect(page.locator(".post-preview-actions")).toHaveText(
+      "赞评论分享",
+    );
+    await save();
+    await screenshot("facebook");
+    await addVariant(
+      page,
+      "discord",
+      "en",
+      "**Release notes**\n`npm run dev`\n||Preview details||",
+    );
+    await page.getByLabel("发布类型", { exact: true }).selectOption("forum");
+    await page
+      .getByLabel("版本标题", { exact: true })
+      .fill("Release discussion");
+    await page.getByLabel("论坛标签", { exact: true }).fill("release feedback");
+    await expect(page.locator(".forum-heading")).toContainText(
+      "Release discussion",
+    );
+    await expect(page.locator(".discord-markdown strong")).toHaveText(
+      "Release notes",
+    );
+    await expect(page.locator(".discord-markdown code")).toHaveText(
+      "npm run dev",
+    );
+    await expect(page.locator(".discord-spoiler")).not.toHaveAttribute(
+      "open",
+      "",
+    );
+    await save();
+    await screenshot("discord");
+    await page.getByRole("button", { name: "文字段", exact: true }).click();
+    await expect(page.getByLabel("第 1 段文字", { exact: true })).toHaveValue(
+      "**Release notes**\n`npm run dev`\n||Preview details||",
+    );
+    await page
+      .getByLabel("第 2 段文字", { exact: true })
+      .fill("Follow-up message");
+    await save();
+    await addVariant(page, "wechat", "zh-CN", "第一段\n\n第二段");
+    await attach(["demo-1.png"]);
+    await page
+      .getByLabel("发布类型", { exact: true })
+      .selectOption("announcement");
+    await page
+      .getByRole("button", { name: "按空行拆分正文", exact: true })
+      .click();
+    await expect(page.getByLabel("第 1 段文字", { exact: true })).toHaveValue(
+      "第一段",
+    );
+    await expect(page.getByLabel("第 2 段文字", { exact: true })).toHaveValue(
+      "第二段",
+    );
+    await expect(page.locator(".segment")).toHaveCount(3);
+    await page
+      .getByRole("button", { name: "复制消息段 2", exact: true })
+      .click();
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(
+      "第二段",
+    );
+    await page
+      .getByRole("button", { name: "加入已选媒体", exact: true })
+      .click();
+    await expect(page.locator(".segment")).toHaveCount(3);
+    await save();
+    await screenshot("wechat");
+    await app.close();
+    ({ app, page } = await launch());
+    await dialogFiles(app, [root]);
+    await page
+      .getByRole("button", { name: "打开本地文件夹", exact: true })
+      .click();
+    const data = await page.evaluate(async () => {
+      const boot = await window.workbench.call<{ recent: { id: string }[] }>(
+        "app.bootstrap",
+      );
+      return window.workbench.call<Workspace>("project.load", {
+        projectId: boot.recent[0].id,
+      });
+    });
+    const variants = data.contents[0].variants;
+    expect(variants).toHaveLength(7);
+    expect(
+      variants.find((v) => v.platform === "youtube")!.publishing.youtube
+        .playlist,
+    ).toBe("入门教程");
+    expect(
+      variants.find((v) => v.platform === "bilibili")!.publishing.bilibili
+        .source,
+    ).toBe("https://example.com/original");
+    expect(
+      variants.find((v) => v.platform === "facebook")!.publishing.facebook
+        .linkUrl,
+    ).toBe("https://example.com/update");
+    expect(
+      variants.find((v) => v.platform === "wechat")!.segments,
+    ).toHaveLength(3);
+    expect(errors).toEqual([]);
+  } finally {
+    await app.evaluate(({ app }) => app.exit(0)).catch(() => {});
+  }
+});
+
 test("editable platforms, distinct composers and light default survive restart", async () => {
   const root = path.join(base, "平台界面验收");
   mkdirSync(root, { recursive: true });

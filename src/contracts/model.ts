@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defaultPublishing, publishingSchema } from "./publishing";
 export const platforms = [
   "x",
   "discord",
@@ -132,6 +133,7 @@ export const variantSchema = z.object({
   title: text,
   body: text,
   tags: z.array(z.string()),
+  publishing: publishingSchema.default(defaultPublishing),
   article: z
     .object({
       author: z.string().max(100),

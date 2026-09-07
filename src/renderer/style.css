@@ -2491,3 +2491,218 @@ a {
 .platform-badge {
   color: var(--text);
 }
+.publishing-options {
+  order: 1;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.publishing-format {
+  order: -3;
+}
+.publishing-options h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+.preview-video-button {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  background: #152119;
+  color: white;
+}
+.preview-video-button > .asset-preview {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.preview-video-button > span {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  background: #152119cc;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.preview-video-button img {
+  object-fit: contain;
+}
+.publishing-options label {
+  margin-bottom: 12px;
+}
+.publishing-options > small {
+  display: block;
+  line-height: 1.7;
+}
+.publishing-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.publishing-field-row > label {
+  min-width: 0;
+}
+.publishing-warnings {
+  padding: 12px 12px 12px 28px;
+  margin: 12px 0 0;
+  background: var(--tint-soft);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text);
+}
+.publishing-summary {
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+}
+.publishing-summary > div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 10px;
+  padding: 5px 0;
+}
+.publishing-summary dt {
+  color: var(--muted);
+}
+.publishing-summary dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.channel-heading {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.discord-preview {
+  background: var(--surface);
+}
+.discord-preview .chat-bubble {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-left: 2px solid #5865f2;
+  max-width: 100%;
+  padding: 6px 12px;
+}
+.discord-markdown code {
+  background: var(--bg);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.discord-markdown pre {
+  white-space: pre-wrap;
+  background: var(--bg);
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.discord-spoiler {
+  display: inline-block;
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.discord-spoiler summary {
+  cursor: pointer;
+  color: var(--secondary);
+}
+.forum-heading {
+  padding: 0 16px 16px;
+}
+.forum-heading h3 {
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+.forum-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.forum-tags span {
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: var(--tint-soft);
+  font-size: 11px;
+}
+.facebook-link-card {
+  margin: 0 14px 14px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.facebook-link-card > * {
+  display: block;
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+.facebook-link-card small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.story-preview .preview-media {
+  aspect-ratio: 9 / 16;
+}
+.douyin-images-preview .preview-media {
+  aspect-ratio: 3 / 4;
+}
+.story-progress {
+  display: flex;
+  gap: 3px;
+  padding: 0 12px 10px;
+}
+.story-progress span {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.story-progress span.active {
+  background: var(--accent);
+}
+.video-stage {
+  position: relative;
+  overflow: hidden;
+}
+.video-stage > .asset-preview {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.cover-caption {
+  position: absolute;
+  top: 12%;
+  left: 8%;
+  right: 8%;
+  padding: 10px;
+  border-radius: 5px;
+  background: #152119cc;
+  color: white;
+  font-size: 22px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.image-cover-caption {
+  padding: 12px 16px;
+  background: var(--tint-soft);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}

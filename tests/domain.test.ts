@@ -6,6 +6,114 @@ import path from "node:path";
 import { parseRange, safePath, uuid, within } from "../src/services/files";
 import { JsonLines, findCodex } from "../src/services/codex/connection";
 import { variantSchema, platformIdSchema } from "../src/contracts/model";
+import { defaultPlatforms } from "../src/contracts/model";
+import {
+  composerFor,
+  defaultPublishing,
+  publicationBody,
+  publicationSegments,
+  publicationWarnings,
+  publishingSchema,
+  splitMessages,
+} from "../src/contracts/publishing";
+
+test("legacy drafts get isolated publishing defaults and native formats respect project overrides", () => {
+  const legacy = {
+    id: uuid(),
+    platform: "youtube",
+    locale: "zh-CN",
+    title: "旧稿",
+    body: "旧正文",
+    tags: [],
+    assetIds: [],
+    coverId: null,
+    segments: [],
+    revision: 1,
+    bodyHash: "",
+    readiness: "draft",
+  };
+  const first = variantSchema.parse(legacy);
+  const second = variantSchema.parse(legacy);
+  first.publishing.youtube.format = "shorts";
+  assert.equal(second.publishing.youtube.format, "video");
+  assert.equal(first.body, "旧正文");
+  const definition = defaultPlatforms.find((p) => p.id === "youtube")!;
+  assert.equal(composerFor(first, definition), "short_video");
+  assert.equal(
+    composerFor(first, { ...definition, composer: "article" }),
+    "article",
+  );
+  assert.equal(
+    publishingSchema.safeParse({ instagram: { format: "video" } }).success,
+    false,
+  );
+  assert.equal(
+    publishingSchema.parse({ youtube: { format: "shorts" } }).wechat.format,
+    "message",
+  );
+});
+
+test("publication text keeps links, chapters, tags and explicit message order consistent", () => {
+  const v = variantSchema.parse({
+    id: uuid(),
+    platform: "youtube",
+    locale: "zh-CN",
+    title: "标题",
+    body: "介绍",
+    tags: ["教程"],
+    assetIds: [],
+    coverId: null,
+    segments: [],
+    revision: 1,
+    bodyHash: "",
+    readiness: "draft",
+  });
+  const youtube = defaultPlatforms.find((p) => p.id === "youtube")!;
+  v.publishing.youtube.chapters = "00:00 开场\n00:30 演示\n02:00 总结";
+  assert.equal(
+    publicationBody(v, youtube),
+    "介绍\n\n00:00 开场\n00:30 演示\n02:00 总结",
+  );
+  assert.equal(
+    publicationWarnings(v, youtube, []).some((w) => w.includes("章节")),
+    false,
+  );
+  v.publishing.youtube.chapters = "00:00 开场\n00:05 太短\n00:02 倒序";
+  assert.equal(
+    publicationWarnings(v, youtube, []).some((w) => w.includes("章节")),
+    true,
+  );
+  v.publishing.youtube.format = "shorts";
+  assert.equal(publicationBody(v, youtube), "介绍");
+  const facebook = defaultPlatforms.find((p) => p.id === "facebook")!;
+  v.platform = "facebook";
+  v.publishing.facebook = {
+    format: "link",
+    linkUrl: "https://example.com",
+    linkTitle: "链接",
+    audience: "朋友",
+  };
+  assert.equal(
+    publicationBody(v, facebook),
+    "介绍\n\nhttps://example.com\n\n#教程",
+  );
+  v.body = "介绍 https://example.com";
+  assert.equal(
+    publicationBody(v, facebook).match(/https:\/\/example.com/g)?.length,
+    1,
+  );
+  const wechat = defaultPlatforms.find((p) => p.id === "wechat")!;
+  v.platform = "wechat";
+  v.body = "开场\n\n正文";
+  v.tags = [];
+  v.publishing = defaultPublishing();
+  assert.deepEqual(splitMessages(v, wechat, []), [
+    { type: "text", text: "开场" },
+    { type: "text", text: "正文" },
+  ]);
+  v.segments = [{ type: "text", text: "独立修改的消息段" }];
+  assert.deepEqual(publicationSegments(v, wechat, []), v.segments);
+});
 test("Range handles full, bounded, suffix, large, and invalid requests", () => {
   assert.equal(parseRange(null, 12), null);
   assert.deepEqual(parseRange("bytes=4-8", 12), { start: 4, end: 8 });
