@@ -277,6 +277,10 @@ export interface Workspace {
   runs: AiRun[];
 }
 export interface CodexStatus {
+  account?: { type: string; email?: string | null; planType?: string };
+  authState?: "signed-in" | "signed-out" | "expired" | "pending";
+  checkedAt?: string;
+  loginPending?: boolean;
   state: "disconnected" | "connecting" | "ready" | "error";
   message: string;
   version: string;

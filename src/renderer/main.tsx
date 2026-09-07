@@ -3422,7 +3422,36 @@ function SettingsPage({
             <p>
               {codex.message} {codex.version}
             </p>
-            <small>使用本机 CLI 登录状态；模型目录在连接时读取。</small>
+            <p>
+              登录状态：
+              {codex.authState === "signed-in"
+                ? "已登录"
+                : codex.authState === "pending"
+                  ? "等待浏览器登录"
+                  : codex.authState === "expired"
+                    ? "登录失效 / 账号已切换"
+                    : "未登录或尚未检查"}
+            </p>
+            {codex.account && (
+              <p>
+                账号：{codex.account.email || codex.account.type}{" "}
+                {codex.account.planType ? " · " + codex.account.planType : ""}
+              </p>
+            )}
+            {codex.checkedAt && (
+              <small>
+                最近检查：{new Date(codex.checkedAt).toLocaleString()}
+              </small>
+            )}
+            <p>
+              换号后请点击“检查登录并重连”。登录失败可点击“浏览器登录 /
+              换号”，在浏览器选择目标账号。
+            </p>
+            <small>
+              也可在终端执行 codex
+              login，完成后回到这里检查登录并重连。登录入口使用本机
+              CLI，不保存密码或令牌到项目。
+            </small>
             <p>执行权限：Full Access（完全访问）</p>
             <small>
               可读写当前系统账号可访问的本机文件、执行命令和联网，包含项目外目录。
@@ -3435,7 +3464,7 @@ function SettingsPage({
               onClick={() =>
                 void call(async () => {
                   await api.call("settings.codexPath");
-                  notice("CLI 路径已保存，重新启动应用后生效");
+                  notice("CLI 路径已保存，请检查登录并重连");
                 })
               }
             >
@@ -3450,8 +3479,32 @@ function SettingsPage({
                 )
               }
             >
-              检查连接
+              检查登录并重连
             </button>
+            <button
+              className="secondary"
+              disabled={busy || codex.loginPending}
+              onClick={() =>
+                void call(async () =>
+                  setCodex(await api.call<CodexStatus>("codex.login")),
+                )
+              }
+            >
+              浏览器登录 / 换号
+            </button>
+            {codex.loginPending && (
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() =>
+                  void call(async () =>
+                    setCodex(await api.call<CodexStatus>("codex.login.cancel")),
+                  )
+                }
+              >
+                取消登录
+              </button>
+            )}
           </div>
         </section>
         <section className="card backup-card">

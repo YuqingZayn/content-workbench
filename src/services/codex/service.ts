@@ -60,6 +60,7 @@ export class CodexService {
   queue: AiRun[] = [];
   connecting?: Promise<CodexStatus>;
   finishing = false;
+  loginId?: string;
   constructor(
     public workspace: WorkspaceService,
     public emit: (e: AppEvent) => void,
@@ -72,6 +73,90 @@ export class CodexService {
     });
     return this.connecting;
   }
+  async reconnect(refreshToken = true) {
+    if (this.active || this.queue.length)
+      throw new AppError(
+        "CODEX_BUSY",
+        "请先停止正在执行的任务，再检查登录或切换账号",
+      );
+    if (this.connecting) await this.connecting;
+    const previous = this.connection;
+    this.connection = undefined;
+    this.loginId = undefined;
+    previous?.close();
+    this.status = {
+      state: "disconnected",
+      message: "正在重新读取登录信息",
+      version: "",
+      models: [],
+    };
+    await this.connect(this.readSettings().codexPath);
+    if (refreshToken && this.status.state === "ready") {
+      try {
+        const result = await this.connection!.request("account/read", {
+          refreshToken: true,
+        });
+        this.status.account = result.account ?? undefined;
+        this.status.authState = result.account ? "signed-in" : "signed-out";
+        if (!result.account) {
+          this.status.state = "error";
+          this.status.message = "Codex 未登录，请点击浏览器登录";
+        }
+      } catch (e) {
+        this.markAuthError((e as Error).message);
+      }
+      this.status.checkedAt = now();
+      this.emit({ type: "codex-status" });
+    }
+    return this.status;
+  }
+  async login() {
+    await this.reconnect(false);
+    if (!this.connection)
+      throw new AppError("CODEX_NOT_READY", this.status.message);
+    const result = await this.connection.request("account/login/start", {
+      type: "chatgpt",
+    });
+    if (result.type !== "chatgpt")
+      throw new AppError("CODEX_LOGIN_FAILED", "CLI 未返回浏览器登录地址");
+    this.loginId = result.loginId;
+    this.status = {
+      ...this.status,
+      state: "connecting",
+      authState: "pending",
+      loginPending: true,
+      message: "请在浏览器完成登录，完成后会自动重新连接",
+    };
+    this.emit({ type: "codex-status" });
+    return result.authUrl as string;
+  }
+  async cancelLogin() {
+    if (this.loginId)
+      await this.connection?.request("account/login/cancel", {
+        loginId: this.loginId,
+      });
+    return this.reconnect(false);
+  }
+  markAuthError(message: string) {
+    this.status = {
+      ...this.status,
+      state: "error",
+      authState: "expired",
+      checkedAt: now(),
+      message: "登录已失效或账号已切换。请检查登录并重连；仍失败时请重新登录。",
+    };
+    for (const queued of this.queue.splice(0)) {
+      queued.status = "interrupted";
+      queued.error = message;
+      this.persist(queued);
+    }
+    this.emit({ type: "codex-status" });
+  }
+  isAuthError(message: string) {
+    return /access token|refresh.token|since logged out|sign(ed)? in.*(again|another account)|unauthorized|authentication|401/i.test(
+      message,
+    );
+  }
   async doConnect(configured?: string) {
     this.status = {
       ...this.status,
@@ -82,13 +167,12 @@ export class CodexService {
     try {
       const c = new CodexConnection();
       this.connection = c;
-      c.on(
-        "notification",
-        (m) =>
-          void this.onNotification(m).catch((e) =>
-            this.failActive((e as Error).message),
-          ),
-      );
+      c.on("notification", (m) => {
+        if (this.connection !== c) return;
+        void this.onNotification(m).catch((e) =>
+          this.failActive((e as Error).message),
+        );
+      });
       c.on("disconnected", () => {
         if (this.connection !== c) return;
         if (this.status.state !== "error")
@@ -111,14 +195,15 @@ export class CodexService {
         c.request("model/list", { includeHidden: false }),
         c.request("config/read", { includeLayers: false }),
       ]);
-      if (!account.account)
-        throw new AppError(
-          "CODEX_AUTH_REQUIRED",
-          "Codex 未登录，请在终端执行 codex login 后重连",
-        );
+
       this.status = {
-        state: "ready",
-        message: "本机 Codex 已连接",
+        state: account.account ? "ready" : "error",
+        message: account.account
+          ? "本机 Codex 已连接"
+          : "Codex 未登录，请点击浏览器登录",
+        account: account.account ?? undefined,
+        authState: account.account ? "signed-in" : "signed-out",
+        checkedAt: now(),
         version: c.version,
         defaultModel:
           config.config.model ??
@@ -138,7 +223,8 @@ export class CodexService {
         state: "error",
         message: (e as Error).message,
       };
-      this.connection?.close();
+      if (this.isAuthError((e as Error).message))
+        this.markAuthError((e as Error).message);
     }
     this.emit({ type: "codex-status" });
     return this.status;
@@ -268,7 +354,10 @@ export class CodexService {
       );
       const connection = this.connection!;
       // Separate natural-language tasks from structured drafts and legacy read-only threads.
-      const sessionKey = `${run.contentId}:full-access-v1:${run.mode ?? "draft"}`;
+      const accountKey = hash(
+        this.status.account?.email || this.status.account?.type || "legacy",
+      ).slice(0, 16);
+      const sessionKey = `${run.contentId}:full-access-v1:${run.mode ?? "draft"}:${accountKey}`;
       let threadId = db.session(project.id, sessionKey);
       const options: ThreadStartParams = {
         cwd: project.root,
@@ -330,6 +419,22 @@ export class CodexService {
   async onNotification(message: any) {
     const run = this.active;
     const p = message.params ?? {};
+    if (
+      message.method === "account/login/completed" &&
+      p.loginId === this.loginId &&
+      this.loginId
+    ) {
+      this.loginId = undefined;
+      this.status.loginPending = false;
+      if (p.success) await this.reconnect();
+      else {
+        this.status.state = "error";
+        this.status.authState = "signed-out";
+        this.status.message = p.error || "登录未完成，请重新登录";
+        this.emit({ type: "codex-status" });
+      }
+      return;
+    }
     if (message.id !== undefined) {
       const legacy = ["applyPatchApproval", "execCommandApproval"].includes(
         message.method,
@@ -442,6 +547,7 @@ export class CodexService {
         else {
           run.status = p.turn.status === "interrupted" ? "cancelled" : "failed";
           run.error = p.turn.error?.message || "任务未完成";
+          if (this.isAuthError(run.error!)) this.markAuthError(run.error!);
           this.persist(run);
         }
       } finally {
@@ -503,6 +609,7 @@ export class CodexService {
     this.persist(run);
   }
   failActive(message: string) {
+    if (this.isAuthError(message)) this.markAuthError(message);
     if (this.active) {
       this.active.status = "interrupted";
       this.active.error = message;

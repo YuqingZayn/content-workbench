@@ -101,8 +101,22 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
     await clipboard.writeText(p.text);
     return true;
   }
-  if (method === "codex.connect")
-    return codex.connect(codex.readSettings().codexPath);
+  if (method === "codex.connect") return codex.reconnect();
+  if (method === "codex.login") {
+    const url = new URL(await codex.login());
+    if (
+      url.protocol !== "https:" ||
+      !["auth.openai.com", "auth0.openai.com", "chatgpt.com"].includes(
+        url.hostname,
+      )
+    ) {
+      await codex.cancelLogin();
+      throw new AppError("CODEX_LOGIN_URL", "CLI 返回了不受支持的登录地址");
+    }
+    await shell.openExternal(url.href);
+    return codex.status;
+  }
+  if (method === "codex.login.cancel") return codex.cancelLogin();
   if (method === "settings.codexPath") {
     const r = await dialog.showOpenDialog(win, {
       title: "选择 codex.exe",

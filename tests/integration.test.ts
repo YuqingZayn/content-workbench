@@ -1143,3 +1143,97 @@ test("AI event simulation preserves concurrent edits, rejects foreign media and 
     workspace.closeAll();
   }
 });
+
+test("Codex account refresh replaces cached connection and auth errors stop queued work", async () => {
+  const { workspace, w } = await setup();
+  const service = new CodexService(workspace, () => {});
+  let closed = false;
+  let refreshRequested = false;
+  service.connection = {
+    close: () => {
+      closed = true;
+    },
+  } as unknown as CodexConnection;
+  service.status = {
+    state: "ready",
+    message: "old",
+    version: "test",
+    models: [],
+    account: { type: "chatgpt", email: "old@example.test" },
+  };
+  service.doConnect = async () => {
+    service.connection = {
+      request: async (method: string, p: any) => {
+        if (method === "account/read") {
+          refreshRequested = p.refreshToken;
+          return {
+            account: {
+              type: "chatgpt",
+              email: "new@example.test",
+              planType: "plus",
+            },
+          };
+        }
+        if (method === "account/login/start")
+          return {
+            type: "chatgpt",
+            loginId: "test-login",
+            authUrl: "https://auth.openai.com/test",
+          };
+        return {};
+      },
+      close: () => {},
+    } as unknown as CodexConnection;
+    service.status = {
+      state: "ready",
+      message: "connected",
+      version: "test",
+      models: [],
+    };
+    return service.status;
+  };
+  try {
+    const status = await service.reconnect();
+    assert.equal(closed, true);
+    assert.equal(refreshRequested, true);
+    assert.equal(status.account?.email, "new@example.test");
+    assert.equal(status.authState, "signed-in");
+    assert.equal(await service.login(), "https://auth.openai.com/test");
+    assert.equal(service.status.loginPending, true);
+    await service.onNotification({
+      method: "account/login/completed",
+      params: { loginId: "unrelated", success: true },
+    });
+    assert.equal(service.status.loginPending, true);
+    await service.onNotification({
+      method: "account/login/completed",
+      params: { loginId: "test-login", success: true },
+    });
+    assert.equal(service.status.authState, "signed-in");
+    assert.equal(service.status.loginPending, undefined);
+    const content = workspace.createContent(w.project.id, "auth failure");
+    const queued: AiRun = {
+      id: uuid(),
+      projectId: w.project.id,
+      contentId: content.id,
+      mode: "task",
+      baseRevision: 0,
+      status: "queued",
+      prompt: "do not retry",
+      output: "",
+      createdAt: new Date().toISOString(),
+    };
+    service.queue.push(queued);
+    await assert.rejects(() => service.reconnect(), { code: "CODEX_BUSY" });
+    service.failActive(
+      "Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.",
+    );
+    assert.equal(service.status.authState, "expired");
+    assert.equal(service.status.state, "error");
+    assert.equal(queued.status, "interrupted");
+    assert.equal(service.queue.length, 0);
+  } finally {
+    service.connection = undefined;
+    workspace.closeAll();
+  }
+});
