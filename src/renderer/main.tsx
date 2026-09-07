@@ -1876,9 +1876,21 @@ function Assistant({
       setBusy(false);
     }
   };
+  const sending = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
+  const canSend =
+    !!prompt.trim() &&
+    (mode !== "draft" || !!variantId) &&
+    codex.state === "ready" &&
+    !w.project.readOnly &&
+    !active &&
+    !submitting;
   const start = async () => {
-    if (!(await guard.current())) return;
+    if (!canSend || sending.current) return;
+    sending.current = true;
+    setSubmitting(true);
     try {
+      if (!(await guard.current())) return;
       setLive("");
       setActivity("");
       await api.call("codex.start", {
@@ -1894,6 +1906,9 @@ function Assistant({
       await refresh();
     } catch (e) {
       notice((e as Error).message);
+    } finally {
+      sending.current = false;
+      setSubmitting(false);
     }
   };
   return (
@@ -2065,6 +2080,17 @@ function Assistant({
             aria-label="Codex 生成要求"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key !== "Enter" ||
+                e.shiftKey ||
+                e.nativeEvent.isComposing ||
+                e.nativeEvent.keyCode === 229
+              )
+                return;
+              e.preventDefault();
+              if (!e.repeat) void start();
+            }}
             placeholder={
               mode === "task"
                 ? "描述要执行的任务，可直接填写文件路径…"
@@ -2104,12 +2130,7 @@ function Assistant({
               <button
                 className="send-button"
                 aria-label="开始生成"
-                disabled={
-                  !prompt.trim() ||
-                  (mode === "draft" && !variantId) ||
-                  codex.state !== "ready" ||
-                  w.project.readOnly
-                }
+                disabled={!canSend}
                 onClick={() => void start()}
               >
                 <ArrowUp size={18} />
@@ -2117,6 +2138,7 @@ function Assistant({
             )}
           </div>
         </div>
+        <p className="hint">Enter 发送 · Shift+Enter 换行</p>
         <p>
           {active
             ? activity || "结果将写回发起任务的项目"
