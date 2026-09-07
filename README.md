@@ -29,9 +29,9 @@ npm run dev
 
 ### 已有本次本地交付文件（推荐）
 
-打开本次交付目录，双击上一级的 `启动内容工作台.cmd`。也可以直接双击本仓库目录下的 `release/0.1.1/win-unpacked/Content Workbench.exe`。升级前请先保存并关闭已经打开的旧版本。
+打开本次交付目录，双击上一级的 `启动内容工作台.cmd`，脚本会进入旁边的 `content-workbench` 目录并运行 `npm run dev`，启动当前源码的开发版。需要 Node.js 22.18 或更高版本及 npm；首次使用请先在仓库目录运行 `npm ci`。运行期间保留终端窗口，关闭软件后开发服务会退出。若提示 5173 端口被占用，请先关闭已运行的开发版再重试。
 
-**这会直接打开桌面软件，无需安装 Node.js 或运行 npm 命令。** 请保留完整的 `win-unpacked` 文件夹，不能只复制其中的 `.exe`。启动脚本和演示项目属于本地交付文件，不包含在 GitHub 源码下载包中。
+若要打开之前的打包版本，可直接双击 `release/0.1.1/win-unpacked/Content Workbench.exe`；该方式无需 Node.js，但不包含最新开发改动。请保留完整的 `win-unpacked` 文件夹。启动脚本和演示项目属于本地交付文件，不包含在 GitHub 源码下载包中。
 
 ### 使用 Windows 安装包或便携包
 
