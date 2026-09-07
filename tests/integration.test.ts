@@ -365,7 +365,7 @@ test("duplicate project IDs are rejected, moved project and lock release work", 
     workspace.closeAll();
   }
 });
-test("all nine platforms export independent manual packages without external sends", async () => {
+test("all built-in platforms export independent manual packages without external sends", async () => {
   const { workspace, w } = await setup();
   try {
     for (const platform of platforms) {
@@ -402,8 +402,266 @@ test("all nine platforms export independent manual packages without external sen
       );
       assert.equal(workspace.job(w.project.id, job.id).status, "scheduled");
     }
-    assert.equal(workspace.load(w.project.id).jobs.length, 9);
+    assert.equal(workspace.load(w.project.id).jobs.length, platforms.length);
   } finally {
+    workspace.closeAll();
+  }
+});
+
+test("platform configuration supports legacy and read-only projects, rejects duplicate names and unregistered IDs", async () => {
+  const { base, root, workspace, w } = await setup();
+  const observer = new WorkspaceService(path.join(base, "observer"));
+  try {
+    const config = path.join(root, ".content-workspace/platforms.json");
+    assert.equal(existsSync(config), false);
+    assert.equal(w.platforms.find((p) => p.id === "wechat")?.name, "微信群");
+    assert.equal(
+      w.platforms.find((p) => p.id === "wechat_official")?.name,
+      "微信公众号",
+    );
+    const locked = await observer.open(root);
+    assert.equal(locked.project.readOnly, true);
+    assert.deepEqual(locked.platforms, w.platforms);
+    assert.throws(
+      () =>
+        observer.savePlatform(w.project.id, {
+          name: "不应保存",
+          color: "#112233",
+        }),
+      { code: "PROJECT_READ_ONLY" },
+    );
+    assert.equal(existsSync(config), false);
+    const saved = workspace.savePlatform(w.project.id, {
+      name: "  知乎  ",
+      color: "#112233",
+    });
+    assert.equal(saved.name, "知乎");
+    assert.throws(
+      () =>
+        workspace.savePlatform(w.project.id, {
+          name: "知乎",
+          color: "#112233",
+        }),
+      { code: "PLATFORM_DUPLICATE" },
+    );
+    assert.throws(
+      () =>
+        workspace.savePlatform(w.project.id, {
+          name: " ｘ ",
+          color: "#112233",
+        }),
+      { code: "PLATFORM_DUPLICATE" },
+    );
+    assert.throws(() =>
+      workspace.savePlatform(w.project.id, { name: " ", color: "#112233" }),
+    );
+    assert.throws(() =>
+      workspace.savePlatform(w.project.id, { name: "有效名称", color: "red" }),
+    );
+    assert.throws(
+      () =>
+        workspace.savePlatform(w.project.id, {
+          id: "missing",
+          name: "改名",
+          color: "#112233",
+        }),
+      { code: "PLATFORM_UNKNOWN" },
+    );
+    const c = workspace.createContent(w.project.id, "验证平台边界");
+    assert.throws(
+      () => workspace.addVariant(w.project.id, c.id, "missing", "zh-CN"),
+      { code: "PLATFORM_UNKNOWN" },
+    );
+    assert.throws(
+      () =>
+        workspace.addAccount(w.project.id, {
+          platform: "missing",
+          label: "测试",
+          externalId: "",
+          accountType: "profile",
+        }),
+      { code: "PLATFORM_UNKNOWN" },
+    );
+    const changed = workspace.savePlatform(w.project.id, {
+      id: "wechat",
+      name: "微信社群",
+      color: "#445566",
+    });
+    assert.equal(changed.id, "wechat");
+    assert.equal(
+      workspace.platforms(w.project.id).find((p) => p.id === "wechat")?.name,
+      "微信社群",
+    );
+    assert.equal(
+      workspace.platforms(w.project.id).find((p) => p.id === "wechat_official")
+        ?.name,
+      "微信公众号",
+    );
+    const otherRoot = path.join(base, "其他身份");
+    mkdirSync(otherRoot);
+    const other = await workspace.open(otherRoot);
+    assert.equal(
+      other.platforms.some((p) => p.id === saved.id),
+      false,
+    );
+    assert.equal(
+      other.platforms.find((p) => p.id === "wechat")?.name,
+      "微信群",
+    );
+    writeJson(config, {
+      schemaVersion: 1,
+      items: [{ id: "xiaohongshu", name: "旧配置笔记", color: "#112233" }],
+    });
+    assert.equal(
+      workspace.platforms(w.project.id).find((p) => p.id === "xiaohongshu")
+        ?.composer,
+      "note",
+    );
+  } finally {
+    observer.closeAll();
+    workspace.closeAll();
+  }
+});
+
+test("custom platform retains identity through AI context, renamed jobs, exports, restart and backup restore", async () => {
+  const { base, root, workspace, w } = await setup();
+  const ai = new CodexService(workspace, () => {});
+  try {
+    const custom = workspace.savePlatform(w.project.id, {
+      name: "测试长文平台",
+      color: "#345678",
+      composer: "article",
+    });
+    let c = workspace.createContent(w.project.id, "自定义平台内容");
+    c = workspace.addVariant(w.project.id, c.id, custom.id, "zh-CN");
+    c = workspace.saveVariant(w.project.id, c.id, {
+      variant: {
+        ...c.variants[0],
+        article: {
+          author: "测试作者",
+          digest: "文章摘要",
+          sourceUrl: "https://example.com/article",
+        },
+      },
+      baseRevision: c.variants[0].revision,
+      baseHash: c.variants[0].bodyHash,
+    });
+    c = ready(workspace, w.project.id, c, "本地测试，不会发送");
+    const variant = c.variants[0];
+    assert.throws(
+      () =>
+        workspace.saveVariant(w.project.id, c.id, {
+          variant: { ...variant, platform: "missing" },
+          baseRevision: variant.revision,
+          baseHash: variant.bodyHash,
+        }),
+      { code: "PLATFORM_UNKNOWN" },
+    );
+    const account = workspace
+      .addAccount(w.project.id, {
+        platform: custom.id,
+        label: "测试账号",
+        externalId: "",
+        accountType: "profile",
+      })
+      .accounts.at(-1)!;
+    const target = workspace
+      .addTarget(w.project.id, {
+        accountId: account.id,
+        label: "测试目标",
+        kind: "page",
+      })
+      .targets.at(-1)!;
+    const [job] = await workspace.schedule(w.project.id, {
+      contentId: c.id,
+      variantId: variant.id,
+      targetIds: [target.id],
+      scheduledAtUtc: "2030-01-01T00:00:00Z",
+      timezone: "Asia/Shanghai",
+    });
+    const renamed = workspace.savePlatform(w.project.id, {
+      ...custom,
+      name: "测试长文平台新版",
+      color: "#654321",
+    });
+    assert.equal(renamed.id, custom.id);
+    ai.status = {
+      state: "ready",
+      message: "test simulation",
+      version: "test",
+      models: [],
+    };
+    ai.active = {} as AiRun;
+    const run = ai.start({
+      projectId: w.project.id,
+      contentId: c.id,
+      variantId: variant.id,
+      prompt: "仅检查上下文",
+    });
+    const context = readJson<{ platform: { id: string; name: string } }>(
+      path.join(root, `.content-workspace/ai-runs/${run.id}/input.json`),
+    );
+    assert.equal(context.platform.id, custom.id);
+    assert.equal(context.platform.name, renamed.name);
+    ai.queue = [];
+    ai.active = undefined;
+    const exported = workspace.exportJob(w.project.id, job.id);
+    const publishInfo = readFileSync(
+      path.join(exported, "发布信息.md"),
+      "utf8",
+    );
+    assert.match(publishInfo, /作者：测试作者/);
+    assert.match(publishInfo, /摘要：文章摘要/);
+    assert.match(publishInfo, /原文链接：https:\/\/example.com\/article/);
+    assert.match(
+      readFileSync(path.join(exported, "发送顺序.md"), "utf8"),
+      /平台：测试长文平台\n/,
+    );
+    assert.equal(
+      readJson<{ platform: { name: string } }>(
+        path.join(exported, "manifest.json"),
+      ).platform.name,
+      custom.name,
+    );
+    workspace.close(w.project.id);
+    const reopened = await workspace.open(root);
+    assert.deepEqual(
+      reopened.platforms.find((p) => p.id === custom.id),
+      renamed,
+    );
+    assert.equal(reopened.contents[0].variants[0].platform, custom.id);
+    assert.equal(reopened.contents[0].variants[0].article.author, "测试作者");
+    assert.equal(reopened.accounts[0].platform, custom.id);
+    assert.equal(reopened.jobs[0].platform, custom.id);
+    const backup = path.join(base, "platform-backup");
+    workspace.backup(w.project.id, backup, true);
+    assert.equal(
+      existsSync(path.join(backup, ".content-workspace/platforms.json")),
+      true,
+    );
+    workspace.close(w.project.id);
+    const restored = await workspace.restore(
+      backup,
+      path.join(base, "platform-restored"),
+    );
+    assert.deepEqual(
+      restored.platforms.find((p) => p.id === custom.id),
+      renamed,
+    );
+    const restoredJob = workspace.job(w.project.id, job.id);
+    assert.equal(restoredJob.platform, custom.id);
+    assert.equal(restoredJob.status, "paused");
+    const completed = workspace.recordManual(w.project.id, job.id, {
+      recordedBy: "本地验收",
+      recordedAt: new Date().toISOString(),
+      result: "验收模拟",
+      url: "",
+      completedSegments: [0],
+    });
+    assert.equal(completed.status, "completed");
+  } finally {
+    ai.active = undefined;
+    ai.queue = [];
     workspace.closeAll();
   }
 });

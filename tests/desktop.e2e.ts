@@ -68,6 +68,247 @@ async function addVariant(
   await page.getByRole("button", { name: "保存草稿", exact: true }).click();
   await expect(page.locator(".save-state")).toHaveText("已保存到本地");
 }
+
+test("editable platforms, distinct composers and light default survive restart", async () => {
+  const root = path.join(base, "平台界面验收");
+  mkdirSync(root, { recursive: true });
+  let { app, page } = await launch();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  try {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(246, 247, 249)",
+    );
+    await dialogFiles(app, [root]);
+    await page
+      .getByRole("button", { name: "打开本地文件夹", exact: true })
+      .click();
+    await page.getByRole("button", { name: "账号与定位", exact: true }).click();
+    await page.getByRole("button", { name: "平台管理", exact: true }).click();
+    const manager = page.getByRole("region", { name: "平台管理", exact: true });
+    await manager
+      .getByRole("button", { name: "编辑微信公众号", exact: true })
+      .click();
+    await manager.getByLabel("平台名称", { exact: true }).fill("公众号验收");
+    await expect(manager.getByLabel("编辑方式", { exact: true })).toHaveValue(
+      "article",
+    );
+    await manager
+      .getByRole("button", { name: "保存平台", exact: true })
+      .click();
+    await expect(
+      manager.getByRole("button", { name: "编辑公众号验收", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "平台账号与目标", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "登记平台账号", exact: true })
+      .click();
+    const modal = page.getByRole("dialog", {
+      name: "登记平台账号",
+      exact: true,
+    });
+    await modal.getByRole("button", { name: "新增平台", exact: true }).click();
+    await modal.getByLabel("平台名称", { exact: true }).fill("自定义资讯");
+    await modal.getByLabel("编辑方式", { exact: true }).selectOption("post");
+    await modal.getByRole("button", { name: "保存平台", exact: true }).click();
+    await expect(
+      modal.getByLabel("平台", { exact: true }).locator("option:checked"),
+    ).toHaveText("自定义资讯");
+    await modal
+      .getByRole("button", { name: "编辑当前平台", exact: true })
+      .click();
+    await modal.getByLabel("平台名称", { exact: true }).fill("X");
+    await modal.getByRole("button", { name: "保存平台", exact: true }).click();
+    await expect(modal.getByRole("alert")).toContainText("已有同名平台");
+    await modal.getByLabel("平台名称", { exact: true }).fill("自定义资讯台");
+    await modal.getByRole("button", { name: "保存平台", exact: true }).click();
+    await expect(
+      modal.getByRole("group", { name: "编辑平台", exact: true }),
+    ).toHaveCount(0);
+    await modal.getByLabel("账号名称", { exact: true }).fill("资讯账号");
+    await modal.getByRole("button", { name: "保存账号", exact: true }).click();
+    await expect(page.locator(".account-card")).toContainText("自定义资讯台");
+    await page.getByRole("button", { name: "素材库", exact: true }).click();
+    await dialogFiles(
+      app,
+      ["demo-1.png", "demo-2.png"].map((f) =>
+        path.resolve("tests/fixtures", f),
+      ),
+    );
+    await page.getByRole("button", { name: "导入素材", exact: true }).click();
+    await expect(page.locator(".asset-card")).toHaveCount(2);
+    await page.getByRole("button", { name: "内容库", exact: true }).click();
+    await page.getByRole("button", { name: "新建内容", exact: true }).click();
+    await page
+      .getByLabel("主题名称", { exact: true })
+      .fill("不同平台的编辑验收");
+    await page.getByRole("button", { name: "创建主题", exact: true }).click();
+    await addVariant(
+      page,
+      "x",
+      "zh-CN",
+      "这是 X 的单条帖子，正文在附件之前。 #内容创作",
+    );
+    await expect(page.locator('[data-composer="post"]')).toBeVisible();
+    await expect(page.getByLabel("版本标题", { exact: true })).toBeHidden();
+    await expect(page.locator('[data-preview="post"] h3')).toHaveCount(0);
+    const attachImages = async () => {
+      await page.getByRole("button", { name: "选择素材", exact: true }).click();
+      await page
+        .locator(".asset-pick")
+        .filter({ hasText: "demo-1.png" })
+        .click();
+      await page
+        .locator(".asset-pick")
+        .filter({ hasText: "demo-2.png" })
+        .click();
+      await page.getByRole("button", { name: "完成选择", exact: true }).click();
+    };
+    await attachImages();
+    await expect(
+      page.getByRole("button", { name: "设置封面 1", exact: true }),
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "保存草稿", exact: true }).click();
+    await expect(
+      page.locator(".post-media-grid .asset-preview.loaded"),
+    ).toHaveCount(2);
+    await page.locator(".editor-scroll").evaluate((el) => {
+      el.scrollTop = 0;
+    });
+    await page.screenshot({ path: ".local/e2e-evidence/x-composer-light.png" });
+    await addVariant(
+      page,
+      "xiaohongshu",
+      "zh-CN",
+      "图文笔记的标题、图片和话题各自编辑。",
+    );
+    await expect(page.getByLabel("版本标题", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-preview="note"]')).toBeVisible();
+    await attachImages();
+    await page.getByRole("button", { name: "设置封面 2", exact: true }).click();
+    await expect(page.locator(".binding").first()).toContainText("demo-2.png");
+    await expect(
+      page.locator(".note-preview .preview-media img"),
+    ).toHaveAttribute("alt", "demo-2.png");
+    await page.getByRole("button", { name: "下一张预览", exact: true }).click();
+    await expect(
+      page.locator(".note-preview .preview-media img"),
+    ).toHaveAttribute("alt", "demo-1.png");
+    await page.getByRole("button", { name: "上一张预览", exact: true }).click();
+    await page.getByRole("button", { name: "保存草稿", exact: true }).click();
+    await page.locator(".editor-scroll").evaluate((el) => {
+      el.scrollTop = 0;
+    });
+    const ordering = await page
+      .locator(".compose-grid")
+      .evaluate((element) => ({
+        media: element.querySelector(".compose-media")!.getBoundingClientRect()
+          .top,
+        text: element.querySelector(".compose-text")!.getBoundingClientRect()
+          .top,
+      }));
+    expect(ordering.media).toBeLessThan(ordering.text);
+    await page.screenshot({
+      path: ".local/e2e-evidence/note-composer-light.png",
+    });
+    await addVariant(
+      page,
+      "wechat_official",
+      "zh-CN",
+      "引言\n\n## 文章小标题\n这是一段 **重点内容**。",
+    );
+    await page.getByLabel("作者（选填）", { exact: true }).fill("演示作者");
+    await page
+      .getByLabel("摘要（选填）", { exact: true })
+      .fill("这一段是文章摘要。");
+    await page
+      .getByLabel("原文链接（选填）", { exact: true })
+      .fill("https://example.com/article");
+    await page.getByRole("button", { name: "保存草稿", exact: true }).click();
+    await expect(page.locator(".save-state")).toHaveText("已保存到本地");
+    await expect(page.locator(".article-preview-body h3")).toHaveText(
+      "文章小标题",
+    );
+    await expect(page.locator(".article-preview-body strong")).toHaveText(
+      "重点内容",
+    );
+    await page.locator(".editor-scroll").evaluate((el) => {
+      el.scrollTop = 0;
+    });
+    await page.screenshot({
+      path: ".local/e2e-evidence/article-composer-light.png",
+    });
+    await addVariant(page, "youtube", "zh-CN", "00:00 开场\n00:30 视频内容");
+    await expect(page.locator('[data-preview="video"]')).toBeVisible();
+    await expect(page.getByLabel("作者（选填）", { exact: true })).toHaveCount(
+      0,
+    );
+    await addVariant(page, "douyin", "zh-CN", "短视频描述");
+    await expect(page.locator('[data-preview="short_video"]')).toBeVisible();
+    await expect(page.getByLabel("版本标题", { exact: true })).toBeHidden();
+    await addVariant(page, "discord", "zh-CN", "频道消息");
+    await expect(page.locator('[data-preview="chat"]')).toContainText(
+      "频道消息",
+    );
+    await page.getByRole("button", { name: "设置与备份", exact: true }).click();
+    await page.getByLabel("外观主题", { exact: true }).selectOption("dark");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(23, 29, 25)",
+    );
+    await page.getByLabel("外观主题", { exact: true }).selectOption("system");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(23, 29, 25)",
+    );
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(246, 247, 249)",
+    );
+    await page.getByLabel("外观主题", { exact: true }).selectOption("light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await page.screenshot({
+      path: ".local/e2e-evidence/platform-settings-light.png",
+    });
+    await app.close();
+    ({ app, page } = await launch());
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await dialogFiles(app, [root]);
+    await page
+      .getByRole("button", { name: "打开本地文件夹", exact: true })
+      .click();
+    const data = await page.evaluate(async () => {
+      const boot = await window.workbench.call<{ recent: { id: string }[] }>(
+        "app.bootstrap",
+      );
+      return window.workbench.call<Workspace>("project.load", {
+        projectId: boot.recent[0].id,
+      });
+    });
+    expect(data.platforms.find((p) => p.id === "wechat_official")?.name).toBe(
+      "公众号验收",
+    );
+    expect(data.platforms.find((p) => p.name === "自定义资讯台")?.id).toBe(
+      data.accounts[0].platform,
+    );
+    expect(
+      data.contents[0].variants.find((v) => v.platform === "wechat_official")
+        ?.article.author,
+    ).toBe("演示作者");
+    expect(errors).toEqual([]);
+  } finally {
+    await app.close();
+  }
+});
 test("desktop first loop: import/play, versions, two targets, independent identity, restart", async () => {
   let { app, page } = await launch();
   const errors: string[] = [];
@@ -242,7 +483,9 @@ test("desktop first loop: import/play, versions, two targets, independent identi
     await page.locator(".asset-pick").filter({ hasText: "demo-2.png" }).click();
     await page.getByRole("button", { name: "完成选择", exact: true }).click();
     await page.getByRole("button", { name: "下移素材 1", exact: true }).click();
-    await page.getByRole("button", { name: "设置封面 1", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "设置封面 1", exact: true }),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "保存草稿", exact: true }).click();
     await expect(page.locator(".save-state")).toHaveText("已保存到本地");
     await page.getByRole("button", { name: "标记就绪", exact: true }).click();

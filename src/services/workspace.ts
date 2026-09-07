@@ -20,6 +20,13 @@ import {
   accountSchema,
   targetSchema,
   variantSchema,
+  defaultPlatforms,
+  platformDefinitionSchema,
+  platformDetailsSchema,
+  platformIdSchema,
+  composerModeSchema,
+  type PlatformDefinition,
+  type ComposerMode,
   type ProjectView,
   type Content,
   type Variant,
@@ -212,6 +219,86 @@ export class WorkspaceService {
       envelope(items),
     );
   }
+  platforms(id: string): PlatformDefinition[] {
+    const { project } = this.context(id);
+    const file = safePath(project.root, ".content-workspace/platforms.json");
+    const saved = existsSync(file)
+      ? this.list(
+          id,
+          "platforms",
+          platformDefinitionSchema.extend({
+            composer: composerModeSchema.optional(),
+          }),
+        )
+      : [];
+    if (new Set(saved.map((p) => p.id)).size !== saved.length)
+      throw new AppError(
+        "PLATFORM_DUPLICATE",
+        "平台配置中有重复标识，请检查 platforms.json",
+      );
+    const merged = new Map(defaultPlatforms.map((p) => [p.id, { ...p }]));
+    for (const platform of saved)
+      merged.set(platform.id, {
+        ...platform,
+        composer:
+          platform.composer ?? merged.get(platform.id)?.composer ?? "post",
+      });
+    return [...merged.values()];
+  }
+  requirePlatform(id: string, platformId: Platform) {
+    const platform = this.platforms(id).find(
+      (p) => p.id === platformIdSchema.parse(platformId),
+    );
+    if (!platform)
+      throw new AppError(
+        "PLATFORM_UNKNOWN",
+        "平台尚未添加，请先在平台管理中添加",
+      );
+    return platform;
+  }
+  savePlatform(
+    id: string,
+    input: {
+      id?: string;
+      name: string;
+      color: string;
+      composer?: ComposerMode;
+    },
+  ) {
+    this.context(id, true);
+    const details = platformDetailsSchema.parse(input);
+    const items = this.platforms(id);
+    const platformId =
+      input.id === undefined
+        ? `custom_${uuid()}`
+        : this.requirePlatform(id, input.id).id;
+    const normalized = (name: string) =>
+      name.normalize("NFKC").trim().toLowerCase();
+    if (
+      items.some(
+        (p) =>
+          p.id !== platformId &&
+          normalized(p.name) === normalized(details.name),
+      )
+    )
+      throw new AppError(
+        "PLATFORM_DUPLICATE",
+        "已有同名平台，请选择现有平台或使用其他名称",
+      );
+    const saved = platformDefinitionSchema.parse({
+      ...details,
+      id: platformId,
+      composer:
+        details.composer ??
+        items.find((p) => p.id === platformId)?.composer ??
+        "post",
+    });
+    this.saveList(id, "platforms", [
+      ...items.filter((p) => p.id !== platformId),
+      saved,
+    ]);
+    return saved;
+  }
   getContent(id: string, contentId: string): Content {
     const { project } = this.context(id);
     const cid = z.uuid().parse(contentId);
@@ -285,6 +372,7 @@ export class WorkspaceService {
     }
     return {
       project,
+      platforms: this.platforms(id),
       profile,
       contents: contents.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
       assets,
@@ -357,6 +445,8 @@ export class WorkspaceService {
     platform: Platform,
     locale: string,
   ) {
+    this.context(id, true);
+    this.requirePlatform(id, platform);
     const content = this.getContent(id, contentId);
     const v = variantSchema.parse({
       id: uuid(),
@@ -426,6 +516,7 @@ export class WorkspaceService {
     const { project } = this.context(id, true);
     const content = this.getContent(id, contentId);
     const v = variantSchema.parse(input.variant);
+    this.requirePlatform(id, v.platform);
     const current = content.variants.find((x) => x.id === v.id);
     if (!current) throw new AppError("VARIANT_UNKNOWN", "版本不存在");
     this.validateAssets(id, v);
@@ -671,6 +762,7 @@ export class WorkspaceService {
     },
   ) {
     this.context(id, true);
+    this.requirePlatform(id, input.platform);
     if (input.externalId.trim())
       for (const other of this.recent()) {
         let accounts: Account[] = [];
@@ -757,6 +849,7 @@ export class WorkspaceService {
     const v = content.variants.find((v) => v.id === input.variantId);
     if (!v || v.readiness !== "ready")
       throw new AppError("NOT_READY", "请保存并标记版本就绪");
+    const platform = this.requirePlatform(id, v.platform);
     if (!v.body.trim() && !v.assetIds.length && !v.segments.length)
       throw new AppError("EMPTY_CONTENT", "内容为空");
     if (hash(v.body) !== v.bodyHash)
@@ -813,7 +906,8 @@ export class WorkspaceService {
                   type: "text" as const,
                   text:
                     v.body +
-                    (v.tags.length
+                    (v.tags.length &&
+                    !["video", "article"].includes(platform.composer)
                       ? "\n\n" +
                         v.tags.map((t) => "#" + t.replace(/^#/, "")).join(" ")
                       : ""),
@@ -830,10 +924,11 @@ export class WorkspaceService {
       id: sid,
       projectId: id,
       variant: v,
+      platform,
       segments,
       media,
       createdAt: now(),
-      payloadHash: hash(json({ v, segments, media })),
+      payloadHash: hash(json({ v, platform, segments, media })),
     };
     writeJson(path.join(snapshotRoot, "manifest.json"), snapshot);
     atomicWrite(path.join(snapshotRoot, "正文.md"), v.body);
@@ -899,6 +994,8 @@ export class WorkspaceService {
     mkdirSync(target, { recursive: true });
     this.copySafeTree(source, target);
     const snapshot = readJson<{
+      platform?: PlatformDefinition;
+      variant: Variant;
       segments: Variant["segments"];
       media: Record<string, { file: string }>;
     }>(path.join(source, "manifest.json"));
@@ -910,7 +1007,25 @@ export class WorkspaceService {
       .join("\n\n");
     atomicWrite(
       path.join(target, "发送顺序.md"),
-      `# ${job.targetLabel}\n\n发送身份：${job.accountLabel}\n此包仅用于人工发布，导出不代表已发送。\n\n${messages}`,
+      `# ${job.targetLabel}\n\n平台：${snapshot.platform?.name ?? this.requirePlatform(id, job.platform).name}\n发送身份：${job.accountLabel}\n此包仅用于人工发布，导出不代表已发送。\n\n${messages}`,
+    );
+    const article = snapshot.variant.article;
+    atomicWrite(
+      path.join(target, "发布信息.md"),
+      [
+        `# ${snapshot.variant.title}`,
+        `平台：${snapshot.platform?.name ?? this.requirePlatform(id, job.platform).name}`,
+        `话题 / 关键词：${snapshot.variant.tags.join(" ")}`,
+        `封面文件：${snapshot.variant.coverId ? (snapshot.media[snapshot.variant.coverId]?.file ?? "") : ""}`,
+        ...(article
+          ? [
+              `作者：${article.author}`,
+              `摘要：${article.digest}`,
+              `原文链接：${article.sourceUrl}`,
+            ]
+          : []),
+        "标题、作者、摘要、封面和关键词请按目标平台的对应字段填写。正文见 正文.md。",
+      ].join("\n\n"),
     );
     writeJson(path.join(target, "target.json"), { ...job, exportedAt: now() });
     renameSync(target, finalTarget);
@@ -985,6 +1100,7 @@ export class WorkspaceService {
     }
     for (const entry of [
       "project.json",
+      "platforms.json",
       "accounts.json",
       "targets.json",
       "assets.json",

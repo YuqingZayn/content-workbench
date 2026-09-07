@@ -2168,3 +2168,326 @@ a {
     transition: none;
   }
 }
+
+.platform-picker {
+  margin-bottom: 18px;
+}
+.platform-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+}
+.platform-editor {
+  margin: 14px 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.platform-editor h3 {
+  margin: 0 0 14px;
+}
+.platform-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  gap: 14px;
+}
+.platform-fields input[type="color"] {
+  height: 41px;
+  padding: 4px;
+}
+.platform-error {
+  color: var(--danger, #e4877f);
+}
+.platform-manager {
+  padding: 24px;
+}
+.platform-manager .section-heading {
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.platform-management-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.platform-management-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.platform-management-item > span:nth-child(2) {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.platform-color-dot {
+  flex: 0 0 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.platform-management-item small {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+}
+.compose-fields {
+  display: flex;
+  flex-direction: column;
+}
+.compose-fields > .section-heading {
+  order: -3;
+}
+.compose-grid:is(
+    [data-composer="note"],
+    [data-composer="photo"],
+    [data-composer="video"],
+    [data-composer="short_video"]
+  )
+  .compose-media {
+  order: -2;
+  margin-bottom: 20px;
+}
+.compose-grid:is(
+    [data-composer="note"],
+    [data-composer="photo"],
+    [data-composer="video"],
+    [data-composer="short_video"]
+  )
+  .media-heading {
+  margin-top: 0;
+}
+.compose-text .body-post,
+.compose-text .body-chat {
+  min-height: 170px;
+  font-size: 15px;
+}
+.compose-text .body-article {
+  min-height: 440px;
+  font-size: 14px;
+  line-height: 2;
+}
+.composer-extra {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  color: var(--secondary);
+  margin-bottom: 16px;
+}
+.composer-extra summary {
+  cursor: pointer;
+  font-size: 11px;
+  margin-bottom: 14px;
+}
+.article-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  margin-bottom: 12px;
+}
+.article-toolbar button {
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.article-toolbar button:hover {
+  background: var(--hover);
+}
+.timeline-preview .preview-copy {
+  padding-top: 0;
+}
+.timeline-preview .preview-copy p {
+  color: var(--text);
+  font-size: 14px;
+  min-height: 0;
+}
+.post-media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  margin: 0 14px 14px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.post-media-grid.single {
+  grid-template-columns: 1fr;
+}
+.post-media-grid > div {
+  aspect-ratio: 1.2;
+  min-width: 0;
+}
+.post-media-grid video,
+.post-media-grid .asset-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.post-preview-actions {
+  display: flex;
+  justify-content: space-around;
+  color: var(--muted);
+  padding: 13px;
+  border-top: 1px solid var(--border);
+}
+.note-preview .preview-media {
+  aspect-ratio: 3 / 4;
+}
+.photo-preview .preview-media {
+  aspect-ratio: 1;
+}
+.note-preview .preview-media img {
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+.note-preview .preview-media video {
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+.note-preview .preview-copy p {
+  font-size: 12px;
+  color: var(--text);
+  min-height: 0;
+}
+.note-preview .preview-copy h3 {
+  font-size: 15px;
+}
+.carousel-empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.note-preview .preview-media > .asset-preview {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.carousel-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 4px;
+  gap: 6px;
+  font-size: 10px;
+}
+.carousel-controls button {
+  padding: 4px;
+}
+.article-preview .preview-copy {
+  padding: 22px;
+}
+.article-preview h2 {
+  font-size: 21px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.article-preview .preview-copy p {
+  min-height: 0;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text);
+}
+.article-preview .preview-copy .article-byline,
+.article-preview .preview-copy .article-source {
+  color: var(--accent);
+  font-size: 11px;
+  margin-top: 12px;
+}
+.article-digest {
+  background: var(--tint-soft);
+  padding: 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 16px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.article-preview-body {
+  margin-top: 24px;
+}
+.article-preview-body h3 {
+  font-size: 17px;
+  margin: 25px 0 12px;
+}
+.article-preview-body blockquote {
+  margin: 16px 0;
+  border-left: 3px solid var(--border);
+  padding-left: 14px;
+  color: var(--secondary);
+  line-height: 1.8;
+}
+.article-cover {
+  aspect-ratio: 2.35;
+}
+.article-inline-media {
+  margin: 14px 0;
+}
+.article-inline-media video {
+  width: 100%;
+}
+.chat-preview {
+  background: var(--bg);
+}
+.chat-messages {
+  padding: 6px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-bubble {
+  background: var(--tint);
+  border: 1px solid var(--border);
+  border-radius: 3px 13px 13px;
+  padding: 12px;
+  max-width: 95%;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat-bubble video {
+  width: 100%;
+}
+.video-stage {
+  aspect-ratio: 16 / 9;
+  background: #152119;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.video-stage video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.video-stage > div > p {
+  margin-top: 12px;
+  font-size: 12px;
+}
+.video-preview.vertical .video-stage {
+  aspect-ratio: 9 / 16;
+}
+.video-preview .preview-copy p {
+  min-height: 0;
+  font-size: 12px;
+}
+.platform-badge {
+  color: var(--text);
+}

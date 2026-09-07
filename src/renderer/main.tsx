@@ -27,7 +27,6 @@ import {
   RefreshCw,
   PanelRightClose,
   PanelRightOpen,
-  MoreHorizontal,
   Square,
   Link,
   CheckCircle2,
@@ -36,10 +35,10 @@ import {
   Scissors,
   Camera,
   ArrowRight,
+  Sun,
 } from "lucide-react";
 import {
-  platforms,
-  platformNames,
+  getPlatformDefinition,
   type Workspace,
   type ProjectView,
   type Content,
@@ -50,21 +49,22 @@ import {
   type Platform,
   type Account,
   type Target,
+  type ThemePreference,
 } from "../contracts/model";
 import "./style.css";
-import { AssetPreview, previewUrl } from "./AssetPreview";
+import { AssetPreview } from "./AssetPreview";
+import {
+  PlatformFields,
+  PlatformPreview,
+  composerHeadings,
+} from "./PlatformComposer";
+import {
+  PlatformProvider,
+  PlatformPicker,
+  PlatformManager,
+  usePlatforms,
+} from "./Platforms";
 const api = window.workbench;
-const platformColor: Record<Platform, string> = {
-  x: "#242629",
-  discord: "#5865f2",
-  youtube: "#ed4946",
-  facebook: "#2576ee",
-  bilibili: "#21a4d3",
-  douyin: "#282a31",
-  xiaohongshu: "#ef4658",
-  instagram: "#b94b87",
-  wechat: "#32a670",
-};
 const statusName: Record<string, string> = {
   scheduled: "已排期",
   manual_pending: "待人工发布",
@@ -98,12 +98,14 @@ const formatTime = (iso: string, tz = "Asia/Shanghai") =>
   }).format(new Date(iso));
 const initials = (name: string) => name.trim().slice(0, 1) || "项";
 function Badge({ platform }: { platform: Platform }) {
+  const { getPlatform } = usePlatforms();
+  const definition = getPlatform(platform);
   return (
     <span
       className="platform-badge"
-      style={{ "--platform": platformColor[platform] } as React.CSSProperties}
+      style={{ "--platform": definition.color } as React.CSSProperties}
     >
-      {platformNames[platform]}
+      {definition.name}
     </span>
   );
 }
@@ -190,6 +192,7 @@ function App() {
   const [recent, setRecent] = useState<ProjectView[]>([]),
     [w, setW] = useState<Workspace | null>(null),
     [page, setPage] = useState("dashboard"),
+    [theme, setTheme] = useState<ThemePreference>("light"),
     [contentId, setContentId] = useState(""),
     [search, setSearch] = useState(""),
     [toast, setToast] = useState(""),
@@ -226,10 +229,15 @@ function App() {
   };
   useEffect(() => {
     void api
-      .call<{ recent: ProjectView[]; codex: CodexStatus }>("app.bootstrap")
+      .call<{
+        recent: ProjectView[];
+        codex: CodexStatus;
+        settings: { theme: ThemePreference };
+      }>("app.bootstrap")
       .then((r) => {
         setRecent(r.recent);
         setCodex(r.codex);
+        setTheme(r.settings.theme);
       })
       .catch((e) => notice(e.message));
     return api.onEvent((e) => {
@@ -240,6 +248,9 @@ function App() {
       if (e.type === "import-progress") setProgress(e.message ?? "");
     });
   }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
   useEffect(() => {
     if (toast) {
       const t = setTimeout(() => setToast(""), 6500);
@@ -294,7 +305,7 @@ function App() {
   const pending =
     w?.jobs.filter((j) => !["completed", "cancelled"].includes(j.status)) ?? [];
   const content = w?.contents.find((c) => c.id === contentId);
-  return (
+  const view = (
     <div className={`app ${w ? "" : "welcome-app"}`} aria-busy={busy}>
       <aside className="sidebar">
         <div className="wordmark">
@@ -726,6 +737,8 @@ function App() {
             {page === "settings" && (
               <SettingsPage
                 w={w}
+                theme={theme}
+                setTheme={setTheme}
                 codex={codex}
                 setCodex={setCodex}
                 notice={notice}
@@ -787,6 +800,11 @@ function App() {
         </Modal>
       )}
     </div>
+  );
+  return (
+    <PlatformProvider workspace={w} refresh={refresh}>
+      {view}
+    </PlatformProvider>
   );
 }
 function ContentRow({
@@ -945,6 +963,9 @@ function Editor({
       notice((e as Error).message);
     }
   };
+  const composer = draft
+    ? getPlatformDefinition(w.platforms, draft.platform).composer
+    : "post";
   const bindings =
     draft?.assetIds
       .map((id) => w.assets.find((a) => a.id === id))
@@ -979,10 +1000,13 @@ function Editor({
             onClick={() => void changeVariant(v.id)}
           >
             <span
-              style={{ background: platformColor[v.platform] }}
+              style={{
+                background: getPlatformDefinition(w.platforms, v.platform)
+                  .color,
+              }}
               className="platform-dot"
             />
-            {platformNames[v.platform]}
+            {getPlatformDefinition(w.platforms, v.platform).name}
             <small>{v.locale.startsWith("en") ? "EN" : "中文"}</small>
           </button>
         ))}
@@ -1044,10 +1068,10 @@ function Editor({
               />
             </label>
           </details>
-          <div className="compose-grid">
+          <div className="compose-grid" data-composer={composer}>
             <div className="compose-fields">
               <div className="section-heading">
-                <h2>编辑文案</h2>
+                <h2>{composerHeadings[composer]}</h2>
                 <span
                   className={`state ${draft.readiness === "ready" ? "green" : ""}`}
                 >
@@ -1055,135 +1079,129 @@ function Editor({
                   {draft.revision}
                 </span>
               </div>
-              <label>
-                标题
-                <input
-                  aria-label="版本标题"
-                  value={draft.title}
-                  onChange={(e) => change({ title: e.target.value })}
-                />
-              </label>
-              <label>
-                正文
-                <textarea
-                  className="body-editor"
-                  aria-label="版本正文"
-                  value={draft.body}
-                  onChange={(e) => change({ body: e.target.value })}
-                  placeholder="写下值得被看见的内容，或请右侧 Codex 帮你起草…"
-                />
-              </label>
-              <div className="field-footer">
-                <span>支持中文与英文</span>
-                <span>{[...draft.body].length} 字符</span>
-              </div>
-              <label>
-                话题标签
-                <input
-                  value={draft.tags.join(" ")}
-                  onChange={(e) =>
-                    change({
-                      tags: e.target.value
-                        .split(/\s+/)
-                        .map((t) => t.replace(/^#/, ""))
-                        .filter(Boolean),
-                    })
-                  }
-                  placeholder="用空格分隔话题"
-                />
-              </label>
-              <div className="section-heading media-heading">
-                <h2>
-                  关联素材 <span>{bindings.length}</span>
-                </h2>
-                <button
-                  className="text-button"
-                  onClick={() => setSelectAssets(true)}
-                >
-                  <Plus size={15} />
-                  选择素材
-                </button>
-              </div>
-              <div className="bindings">
-                {bindings.map((a, i) => (
-                  <div className="binding" key={a.id}>
-                    <div className="binding-thumb">
-                      {a.kind === "image" ? (
-                        <AssetPreview
-                          projectId={w.project.id}
-                          asset={a}
-                          alt={a.name}
-                        />
-                      ) : (
-                        <Play size={18} />
-                      )}
-                    </div>
-                    <div>
-                      <strong>{a.name}</strong>
-                      <small>
-                        {i + 1} · {a.kind === "image" ? "图片" : "视频"}
-                        {draft.coverId === a.id ? " · 封面" : ""}
-                      </small>
-                    </div>
-                    <div className="binding-actions">
-                      <button
-                        className="icon"
-                        disabled={i === 0}
-                        aria-label={`上移素材 ${i + 1}`}
-                        onClick={() => reorder(i, -1)}
-                      >
-                        <ArrowUp size={14} />
-                      </button>
-                      <button
-                        className="icon"
-                        disabled={i === bindings.length - 1}
-                        aria-label={`下移素材 ${i + 1}`}
-                        onClick={() => reorder(i, 1)}
-                      >
-                        <ArrowDown size={14} />
-                      </button>
-                      {a.kind === "image" && (
-                        <button
-                          className="icon"
-                          title="设为封面"
-                          aria-label={`设置封面 ${i + 1}`}
-                          onClick={() => change({ coverId: a.id })}
-                        >
-                          <ImageIcon size={14} />
-                        </button>
-                      )}
-                      <button
-                        className="icon"
-                        aria-label={`移除关联 ${i + 1}`}
-                        onClick={() =>
-                          change({
-                            assetIds: draft.assetIds.filter(
-                              (id) => id !== a.id,
-                            ),
-                            coverId:
-                              draft.coverId === a.id ? null : draft.coverId,
-                          })
-                        }
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {!bindings.length && (
+              <PlatformFields w={w} draft={draft} change={change} />
+              <div className="compose-media">
+                <div className="section-heading media-heading">
+                  <h2>
+                    {composer === "note"
+                      ? "笔记图片与封面"
+                      : composer === "article"
+                        ? "文章封面与配图"
+                        : composer === "video" || composer === "short_video"
+                          ? "视频与封面"
+                          : "关联素材"}{" "}
+                    <span>{bindings.length}</span>
+                  </h2>
                   <button
-                    className="asset-empty"
+                    className="text-button"
                     onClick={() => setSelectAssets(true)}
                   >
-                    <ImageIcon size={23} />
-                    选择图片、视频或关键帧
+                    <Plus size={15} />
+                    选择素材
                   </button>
-                )}
+                </div>
+                <div className="bindings">
+                  {bindings.map((a, i) => (
+                    <div className="binding" key={a.id}>
+                      <div className="binding-thumb">
+                        {a.kind === "image" ? (
+                          <AssetPreview
+                            projectId={w.project.id}
+                            asset={a}
+                            alt={a.name}
+                          />
+                        ) : (
+                          <Play size={18} />
+                        )}
+                      </div>
+                      <div>
+                        <strong>{a.name}</strong>
+                        <small>
+                          {i + 1} · {a.kind === "image" ? "图片" : "视频"}
+                          {draft.coverId === a.id ? " · 封面" : ""}
+                        </small>
+                      </div>
+                      <div className="binding-actions">
+                        <button
+                          className="icon"
+                          disabled={i === 0}
+                          aria-label={`上移素材 ${i + 1}`}
+                          onClick={() => reorder(i, -1)}
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          className="icon"
+                          disabled={i === bindings.length - 1}
+                          aria-label={`下移素材 ${i + 1}`}
+                          onClick={() => reorder(i, 1)}
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                        {a.kind === "image" &&
+                          !["post", "chat"].includes(composer) && (
+                            <button
+                              className="icon"
+                              title="设为封面"
+                              aria-label={`设置封面 ${i + 1}`}
+                              onClick={() =>
+                                change({
+                                  coverId: a.id,
+                                  ...(["note", "photo"].includes(composer)
+                                    ? {
+                                        assetIds: [
+                                          a.id,
+                                          ...draft.assetIds.filter(
+                                            (id) => id !== a.id,
+                                          ),
+                                        ],
+                                      }
+                                    : {}),
+                                })
+                              }
+                            >
+                              <ImageIcon size={14} />
+                            </button>
+                          )}
+                        <button
+                          className="icon"
+                          aria-label={`移除关联 ${i + 1}`}
+                          onClick={() =>
+                            change({
+                              assetIds: draft.assetIds.filter(
+                                (id) => id !== a.id,
+                              ),
+                              coverId:
+                                draft.coverId === a.id ? null : draft.coverId,
+                            })
+                          }
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {!bindings.length && (
+                    <button
+                      className="asset-empty"
+                      onClick={() => setSelectAssets(true)}
+                    >
+                      <ImageIcon size={23} />
+                      选择图片、视频或关键帧
+                    </button>
+                  )}
+                </div>
               </div>
-              {draft.platform === "wechat" && (
+              {(composer === "chat" || draft.segments.length > 0) && (
                 <div className="segments">
                   <div className="section-heading">
-                    <h2>群消息顺序</h2>
+                    <h2>
+                      {draft.platform === "wechat"
+                        ? "群消息顺序"
+                        : composer === "chat"
+                          ? "频道消息顺序"
+                          : "已有消息段"}
+                    </h2>
                     <span className="muted">
                       {draft.segments.length || "自动"} 段
                     </span>
@@ -1318,54 +1336,12 @@ function Editor({
                 <span>内容预览</span>
                 <Badge platform={draft.platform} />
               </div>
-              <div className="post-preview">
-                <div className="preview-account">
-                  <div className="avatar small">{initials(w.project.name)}</div>
-                  <div>
-                    <strong>{w.project.name}</strong>
-                    <small>
-                      {draft.locale === "en" ? "English" : "简体中文"} ·
-                      内容布局示意
-                    </small>
-                  </div>
-                  <MoreHorizontal size={17} />
-                </div>
-                {bindings.length > 0 && (
-                  <div className="preview-media">
-                    {bindings[0].kind === "image" ? (
-                      <AssetPreview
-                        projectId={w.project.id}
-                        asset={bindings[0]}
-                        alt="内容预览"
-                      />
-                    ) : (
-                      <video
-                        src={mediaUrl(w.project.id, bindings[0])}
-                        poster={
-                          w.assets.find((a) => a.id === draft.coverId)
-                            ? previewUrl(
-                                w.project.id,
-                                w.assets.find((a) => a.id === draft.coverId)!,
-                              )
-                            : undefined
-                        }
-                        controls
-                        preload="metadata"
-                      />
-                    )}
-                    {bindings.length > 1 && (
-                      <span className="media-count">1 / {bindings.length}</span>
-                    )}
-                  </div>
-                )}
-                <div className="preview-copy">
-                  <h3>{draft.title}</h3>
-                  <p>{draft.body || "正文预览会显示在这里。"}</p>
-                  <div className="hashtags">
-                    {draft.tags.map((t) => "#" + t).join(" ")}
-                  </div>
-                </div>
-              </div>
+              <PlatformPreview
+                key={draft.id}
+                w={w}
+                draft={draft}
+                bindings={bindings}
+              />
               <p className="hint centered">平台最终排版以实际客户端为准</p>
               <div className="preview-guidance">
                 <CheckCircle2 size={16} />
@@ -1444,20 +1420,7 @@ function Editor({
               });
             }}
           >
-            <label>
-              平台
-              <select
-                value={platform}
-                aria-label="平台"
-                onChange={(e) => setPlatform(e.target.value as Platform)}
-              >
-                {platforms.map((p) => (
-                  <option key={p} value={p}>
-                    {platformNames[p]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <PlatformPicker value={platform} onChange={setPlatform} />
             <label>
               语言
               <select
@@ -1898,7 +1861,8 @@ function Assistant({
           >
             {content.variants.map((v) => (
               <option key={v.id} value={v.id}>
-                {platformNames[v.platform]} · {v.locale}
+                {getPlatformDefinition(w.platforms, v.platform).name} ·{" "}
+                {v.locale}
               </option>
             ))}
           </select>
@@ -2380,8 +2344,16 @@ function Accounts({ w, refresh, notice }: Common) {
         >
           身份资料
         </button>
+        <button
+          className={tab === "platforms" ? "selected" : ""}
+          onClick={() => setTab("platforms")}
+        >
+          平台管理
+        </button>
       </div>
-      {tab === "profile" ? (
+      {tab === "platforms" ? (
+        <PlatformManager />
+      ) : tab === "profile" ? (
         <form
           className="card profile-form"
           onSubmit={(e) => {
@@ -2477,7 +2449,7 @@ function Accounts({ w, refresh, notice }: Common) {
           <div className="info-banner">
             <Users size={18} />
             <p>
-              九个平台均可登记并准备发布包。当前使用人工辅助发布，账号登记不代表已获得平台授权。
+              可选择内置平台或添加自己的平台。当前使用人工辅助发布，账号登记不代表已获得平台授权。
             </p>
           </div>
           {!w.accounts.length ? (
@@ -2533,7 +2505,9 @@ function Accounts({ w, refresh, notice }: Common) {
                             ? "group"
                             : a.platform === "discord"
                               ? "channel"
-                              : "profile",
+                              : a.platform === "wechat_official"
+                                ? "page"
+                                : "profile",
                         );
                       }}
                     >
@@ -2560,8 +2534,8 @@ function Accounts({ w, refresh, notice }: Common) {
             </div>
           )}
           <div className="platform-strip">
-            {platforms.map((p) => (
-              <Badge key={p} platform={p} />
+            {w.platforms.map((p) => (
+              <Badge key={p.id} platform={p.id} />
             ))}
           </div>
         </>
@@ -2585,19 +2559,7 @@ function Accounts({ w, refresh, notice }: Common) {
               });
             }}
           >
-            <label>
-              平台
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value as Platform)}
-              >
-                {platforms.map((p) => (
-                  <option key={p} value={p}>
-                    {platformNames[p]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <PlatformPicker value={platform} onChange={setPlatform} />
             <label>
               账号名称
               <input
@@ -2626,6 +2588,7 @@ function Accounts({ w, refresh, notice }: Common) {
                 <option value="page">Facebook Page</option>
                 <option value="channel">频道账号</option>
                 <option value="operator">群运营身份</option>
+                <option value="official">公众号账号</option>
               </select>
             </label>
             <p className="hint">仅保存公开标识与用途。自动发布尚未接入。</p>
@@ -3004,9 +2967,9 @@ function Calendar({
           onChange={(e) => setFilter(e.target.value)}
         >
           <option value="all">全部平台</option>
-          {platforms.map((p) => (
-            <option key={p} value={p}>
-              {platformNames[p]}
+          {w.platforms.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
             </option>
           ))}
         </select>
@@ -3169,12 +3132,16 @@ function Calendar({
 }
 function SettingsPage({
   w,
+  theme,
+  setTheme,
   codex,
   setCodex,
   notice,
   onRestore,
 }: {
   w: Workspace;
+  theme: ThemePreference;
+  setTheme: (theme: ThemePreference) => void;
   codex: CodexStatus;
   setCodex: (s: CodexStatus) => void;
   notice: (s: string) => void;
@@ -3202,6 +3169,33 @@ function SettingsPage({
         </div>
       </div>
       <div className="settings-stack">
+        <section className="card settings-card">
+          <div>
+            <Sun size={22} />
+            <h2>外观</h2>
+            <p>默认使用浅色主题，也可以手动选择或跟随系统。</p>
+          </div>
+          <label>
+            外观主题
+            <select
+              aria-label="外观主题"
+              value={theme}
+              disabled={busy}
+              onChange={(e) => {
+                const next = e.target.value as ThemePreference;
+                void call(async () => {
+                  await api.call("settings.theme", { theme: next });
+                  setTheme(next);
+                });
+              }}
+            >
+              <option value="light">浅色（默认）</option>
+              <option value="dark">深色</option>
+              <option value="system">跟随系统</option>
+            </select>
+          </label>
+        </section>
+        <PlatformManager />
         <section className="card settings-card">
           <div>
             <Folder size={22} />

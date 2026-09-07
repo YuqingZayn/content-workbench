@@ -7,6 +7,7 @@ import {
   shell,
   clipboard,
   nativeImage,
+  nativeTheme,
 } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -18,7 +19,13 @@ import { z } from "zod";
 import { WorkspaceService } from "../services/workspace";
 import { CodexService } from "../services/codex/service";
 import { AppError, parseRange, uuid, writeJson } from "../services/files";
-import { variantSchema, platforms, type AppEvent } from "../contracts/model";
+import {
+  variantSchema,
+  platformIdSchema,
+  platformDetailsSchema,
+  themeSchema,
+  type AppEvent,
+} from "../contracts/model";
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "media",
@@ -34,6 +41,7 @@ protocol.registerSchemesAsPrivileged([
 if (process.env.WORKBENCH_USER_DATA)
   app.setPath("userData", process.env.WORKBENCH_USER_DATA);
 if (!app.requestSingleInstanceLock()) app.quit();
+nativeTheme.themeSource = "light";
 let win: BrowserWindow;
 let service: WorkspaceService;
 let codex: CodexService;
@@ -56,7 +64,7 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
   if (method === "app.bootstrap")
     return {
       recent: service.recent(),
-      settings: codex.readSettings(),
+      settings: { ...codex.readSettings(), theme: nativeTheme.themeSource },
       codex: codex.status,
     };
   if (method === "project.open") {
@@ -103,9 +111,22 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
     });
     if (r.canceled) return null;
     writeJson(path.join(service.appData, "settings.json"), {
+      ...codex.readSettings(),
       codexPath: r.filePaths[0],
     });
     return { codexPath: r.filePaths[0] };
+  }
+  if (method === "settings.theme") {
+    const { theme } = z.object({ theme: themeSchema }).parse(data);
+    writeJson(path.join(service.appData, "settings.json"), {
+      ...codex.readSettings(),
+      theme,
+    });
+    nativeTheme.themeSource = theme;
+    win.setBackgroundColor(
+      nativeTheme.shouldUseDarkColors ? "#171d19" : "#f6f7f9",
+    );
+    return { theme };
   }
   if (method === "codex.start")
     return codex.start(
@@ -125,6 +146,12 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
   }
   const { projectId } = pid.parse(data);
   if (method === "project.load") return service.load(projectId);
+  if (method === "platforms.save") {
+    const p = platformDetailsSchema
+      .extend({ id: platformIdSchema.optional() })
+      .parse(data);
+    return service.savePlatform(projectId, p);
+  }
   if (method === "project.reveal") {
     return shell.openPath(service.context(projectId).project.root);
   }
@@ -151,7 +178,7 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
     const p = z
       .object({
         contentId: z.uuid(),
-        platform: z.enum(platforms),
+        platform: platformIdSchema,
         locale: z.string().min(1),
       })
       .parse(data);
@@ -272,7 +299,7 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
   if (method === "accounts.add") {
     const p = z
       .object({
-        platform: z.enum(platforms),
+        platform: platformIdSchema,
         label: z.string().min(1),
         externalId: z.string(),
         accountType: z.string(),
@@ -350,6 +377,9 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
 app.whenReady().then(async () => {
   service = new WorkspaceService(app.getPath("userData"));
   codex = new CodexService(service, emit);
+  nativeTheme.themeSource = themeSchema
+    .catch("light")
+    .parse(codex.readSettings().theme);
   thumbnails = new ThumbnailService(
     path.join(app.getPath("userData"), "cache", "previews-v1"),
     path.join(__dirname, "thumbnail-worker.cjs"),
@@ -429,7 +459,7 @@ app.whenReady().then(async () => {
     minWidth: 1100,
     minHeight: 720,
     title: "内容工作台",
-    backgroundColor: "#f6f7f9",
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#171d19" : "#f6f7f9",
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,

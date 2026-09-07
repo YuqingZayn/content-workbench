@@ -164,6 +164,7 @@ export class CodexService {
       audience: content.audience,
       objective: content.objective,
       variant: v,
+      platform: this.workspace.requirePlatform(project.id, v.platform),
       allowedAssets: w.assets
         .filter((a) => v.assetIds.includes(a.id) || v.coverId === a.id)
         .map((a) => ({ id: a.id, name: a.name, kind: a.kind })),

@@ -9,6 +9,7 @@ export const platforms = [
   "xiaohongshu",
   "instagram",
   "wechat",
+  "wechat_official",
 ] as const;
 export const platformNames: Record<Platform, string> = {
   x: "X",
@@ -20,8 +21,84 @@ export const platformNames: Record<Platform, string> = {
   xiaohongshu: "小红书",
   instagram: "Instagram",
   wechat: "微信群",
+  wechat_official: "微信公众号",
 };
-export type Platform = (typeof platforms)[number];
+export const platformIdSchema = z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/);
+export type Platform = z.infer<typeof platformIdSchema>;
+export const composerModes = [
+  "post",
+  "note",
+  "article",
+  "chat",
+  "video",
+  "short_video",
+  "photo",
+] as const;
+export const composerModeSchema = z.enum(composerModes);
+export type ComposerMode = z.infer<typeof composerModeSchema>;
+export const composerNames: Record<ComposerMode, string> = {
+  post: "帖子：正文 + 附件",
+  note: "图文笔记：封面 + 标题 + 话题",
+  article: "长文章：标题 + 作者 + 摘要",
+  chat: "群聊 / 频道：消息段",
+  video: "视频投稿：视频 + 标题 + 简介",
+  short_video: "短视频：竖屏视频 + 描述",
+  photo: "图片动态：图片 + 配文",
+};
+export const platformDetailsSchema = z.object({
+  name: z.string().trim().min(1, "请输入平台名称").max(60),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "请选择有效的平台颜色"),
+  composer: composerModeSchema.optional(),
+});
+export const platformDefinitionSchema = platformDetailsSchema.extend({
+  id: platformIdSchema,
+  composer: composerModeSchema.default("post"),
+});
+export type PlatformDefinition = z.infer<typeof platformDefinitionSchema>;
+const defaultColors = [
+  "#242629",
+  "#5865f2",
+  "#ed4946",
+  "#2576ee",
+  "#21a4d3",
+  "#282a31",
+  "#ef4658",
+  "#b94b87",
+  "#32a670",
+  "#07a05a",
+];
+const defaultComposers: ComposerMode[] = [
+  "post",
+  "chat",
+  "video",
+  "post",
+  "video",
+  "short_video",
+  "note",
+  "photo",
+  "chat",
+  "article",
+];
+export const defaultPlatforms: PlatformDefinition[] = platforms.map(
+  (id, i) => ({
+    id,
+    name: platformNames[id],
+    color: defaultColors[i],
+    composer: defaultComposers[i],
+  }),
+);
+export const getPlatformDefinition = (
+  items: PlatformDefinition[],
+  id: Platform,
+) =>
+  items.find((p) => p.id === id) ?? {
+    id,
+    name: id,
+    color: "#628877",
+    composer: "post" as const,
+  };
+export const themeSchema = z.enum(["light", "dark", "system"]);
+export type ThemePreference = z.infer<typeof themeSchema>;
 export const idSchema = z.uuid();
 const text = z.string().max(200000);
 export const projectSchema = z.object({
@@ -50,11 +127,26 @@ export const segmentSchema = z.discriminatedUnion("type", [
 export type Segment = z.infer<typeof segmentSchema>;
 export const variantSchema = z.object({
   id: idSchema,
-  platform: z.enum(platforms),
+  platform: platformIdSchema,
   locale: z.string().min(1),
   title: text,
   body: text,
   tags: z.array(z.string()),
+  article: z
+    .object({
+      author: z.string().max(100),
+      digest: z.string().max(1000),
+      sourceUrl: z.union([
+        z.literal(""),
+        z
+          .url()
+          .refine(
+            (url) => /^https?:\/\//.test(url),
+            "原文链接应以 http 或 https 开头",
+          ),
+      ]),
+    })
+    .default({ author: "", digest: "", sourceUrl: "" }),
   assetIds: z.array(idSchema),
   coverId: idSchema.nullable(),
   segments: z.array(segmentSchema),
@@ -103,7 +195,7 @@ export type Asset = z.infer<typeof assetSchema> & {
 export const accountSchema = z.object({
   id: idSchema,
   projectId: idSchema,
-  platform: z.enum(platforms),
+  platform: platformIdSchema,
   label: z.string().min(1),
   externalId: z.string(),
   accountType: z.string(),
@@ -169,6 +261,7 @@ export interface AiRun {
 }
 export interface Workspace {
   project: ProjectView;
+  platforms: PlatformDefinition[];
   profile: { identity: string; facts: string; voice: string };
   contents: Content[];
   assets: Asset[];

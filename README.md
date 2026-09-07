@@ -23,6 +23,8 @@ npm run dev
 
 开发服务地址为 `http://127.0.0.1:5173`，完整功能通过 Electron 窗口使用。保留运行中的终端即可持续开发，关闭应用窗口会结束开发服务。此命令不生成安装包，`dev` 分支的 GitHub 检查也跳过安装包构建。
 
+当前 `dev` 版默认使用浅色主题，可在“设置与备份 → 外观”切换。平台可在“账号与定位 → 平台管理”中新增或编辑；默认包含微信公众号。内容编辑会根据平台使用帖子、图文笔记、长文章、消息、横屏视频、短视频或图片动态的界面。操作方法见 [平台与外观设置](docs/platform-editors.md)。这些更新通过 `npm run dev` 体验，之前的安装包不包含本次开发改动。
+
 ### 已有本次本地交付文件（推荐）
 
 打开本次交付目录，双击上一级的 `启动内容工作台.cmd`。也可以直接双击本仓库目录下的 `release/0.1.1/win-unpacked/Content Workbench.exe`。升级前请先保存并关闭已经打开的旧版本。
@@ -91,11 +93,12 @@ npm run dist:win
 5. 每个目标独立导出固定文案和有序媒体，再回填实际发送人、时间、结果和已发送段落。
 6. 重启后保持项目、草稿、媒体顺序和逐目标状态。恢复备份后，未完成任务默认暂停。
 
-九个平台：X、Discord、YouTube、Facebook、B站、抖音、小红书、Instagram、微信群。当前均为辅助发布；没有伪装成自动发布的操作。实际平台发送由用户执行。
+内置平台：X、Discord、YouTube、Facebook、B站、抖音、小红书、Instagram、微信群、微信公众号，并支持新增自定义平台。当前均为辅助发布，实际平台发送由用户执行。
 
 ## 文档
 
 - [使用指南](docs/user-guide.md)
+- [平台编辑界面与外观设置（dev）](docs/platform-editors.md)
 - [0.1.1 图片加载优化与 GitHub 参考](docs/image-performance.md)
 - [实现与验证记录](docs/verification.md)
 - [实际平台能力](docs/platform-capabilities.md)
