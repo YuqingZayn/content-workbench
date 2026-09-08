@@ -41,3 +41,7 @@ exports/<jobId>/
 ## 小红书网页登录
 
 `WebLoginService` 管理每个 projectId + accountId 的独立 Electron 持久 Session；远程 BrowserWindow 无工作台 preload 和 IPC。只读身份检查才产生“已登录”，重启后先标记会话待检查；关闭、退出与异步返回以账号隔离。认证状态事件只更新网页登录视图，避免每次检查重新加载整个业务项目。详见 [网页登录说明](xiaohongshu-login.md)。
+
+## 全流程项目对话
+
+聊天栏由应用工作区统一挂载，切换页面或隐藏面板不会卸载；切换项目时隔离组件状态。项目任务允许省略 contentId，单独维护项目级模型线程，沿用原有任务持久化、队列、停止和 Full Access 检查；旧主题线程标识保持兼容。发起时传入页面上下文及有数量上限的项目摘要，流式输出按 runId 归属，项目讨论与平台版本写回互相区分。详见 [项目聊天](project-chat.md)。

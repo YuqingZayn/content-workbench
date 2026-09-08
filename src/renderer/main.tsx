@@ -46,6 +46,7 @@ import {
   type Asset,
   type Job,
   type CodexStatus,
+  type CodexView,
   type Platform,
   type Account,
   type Target,
@@ -444,10 +445,11 @@ function App() {
                 <FolderOpen size={18} />
               </button>
             )}
-            {page === "editor" && (
+            {w && (
               <button
                 className="icon"
                 aria-label="切换 Codex 面板"
+                aria-expanded={assistant}
                 onClick={() => setAssistant(!assistant)}
               >
                 {assistant ? (
@@ -516,101 +518,210 @@ function App() {
               </section>
             )}
           </main>
-        ) : page === "editor" && content ? (
-          <div className={`editor-layout ${assistant ? "" : "no-assistant"}`}>
-            <Editor
-              key={w.project.id + content.id}
-              w={w}
-              content={content}
-              refresh={refresh}
-              notice={notice}
-              guard={guard}
-              onBack={() => void navigate("contents")}
-            />
-            {assistant && (
-              <Assistant
+        ) : (
+          <div
+            className={`workbench-layout ${assistant ? "" : "no-assistant"}`}
+          >
+            {page === "editor" && content ? (
+              <Editor
+                key={w.project.id + content.id}
                 w={w}
                 content={content}
-                codex={codex}
-                setCodex={setCodex}
                 refresh={refresh}
-                guard={guard}
                 notice={notice}
+                guard={guard}
+                onBack={() => void navigate("contents")}
               />
-            )}
-          </div>
-        ) : (
-          <main className="main-scroll">
-            {page === "dashboard" && (
-              <>
-                <div className="page-heading">
-                  <div>
-                    <div className="eyebrow">工作台 / OVERVIEW</div>
-                    <h1>把想法，变成下一条内容。</h1>
-                    <p>这里是 {w.project.name} 的内容工作空间。</p>
-                  </div>
-                  <button className="primary" onClick={() => setNewTitle("")}>
-                    <Plus size={17} />
-                    新建内容
-                  </button>
-                </div>
-                <div className="stats">
-                  <div>
-                    <span>内容主题</span>
-                    <strong>
-                      {w.contents.length}
-                      <small>篇</small>
-                    </strong>
-                    <Files size={21} />
-                  </div>
-                  <div>
-                    <span>可用素材</span>
-                    <strong>
-                      {
-                        w.assets.filter((a) => a.availability === "available")
-                          .length
-                      }
-                      <small>份</small>
-                    </strong>
-                    <ImageIcon size={21} />
-                  </div>
-                  <div>
-                    <span>待完成发布</span>
-                    <strong>
-                      {pending.length}
-                      <small>项</small>
-                    </strong>
-                    <Clock size={21} />
-                  </div>
-                  <div>
-                    <span>已完成发布</span>
-                    <strong>
-                      {
-                        w.jobs.filter((j) =>
-                          ["completed", "published"].includes(j.status),
-                        ).length
-                      }
-                      <small>项</small>
-                    </strong>
-                    <CheckCircle2 size={21} />
-                  </div>
-                </div>
-                <div className="dashboard-columns">
-                  <section className="card">
-                    <div className="section-heading">
-                      <h2>
-                        最近内容 <span>RECENT CONTENT</span>
-                      </h2>
+            ) : (
+              <main className="main-scroll">
+                {page === "dashboard" && (
+                  <>
+                    <div className="page-heading">
+                      <div>
+                        <div className="eyebrow">工作台 / OVERVIEW</div>
+                        <h1>把想法，变成下一条内容。</h1>
+                        <p>这里是 {w.project.name} 的内容工作空间。</p>
+                      </div>
                       <button
-                        className="text-button"
-                        onClick={() => void navigate("contents")}
+                        className="primary"
+                        onClick={() => setNewTitle("")}
                       >
-                        查看全部 <ArrowRight size={14} />
+                        <Plus size={17} />
+                        新建内容
                       </button>
                     </div>
-                    {w.contents.length ? (
-                      w.contents
-                        .slice(0, 5)
+                    <div className="stats">
+                      <div>
+                        <span>内容主题</span>
+                        <strong>
+                          {w.contents.length}
+                          <small>篇</small>
+                        </strong>
+                        <Files size={21} />
+                      </div>
+                      <div>
+                        <span>可用素材</span>
+                        <strong>
+                          {
+                            w.assets.filter(
+                              (a) => a.availability === "available",
+                            ).length
+                          }
+                          <small>份</small>
+                        </strong>
+                        <ImageIcon size={21} />
+                      </div>
+                      <div>
+                        <span>待完成发布</span>
+                        <strong>
+                          {pending.length}
+                          <small>项</small>
+                        </strong>
+                        <Clock size={21} />
+                      </div>
+                      <div>
+                        <span>已完成发布</span>
+                        <strong>
+                          {
+                            w.jobs.filter((j) =>
+                              ["completed", "published"].includes(j.status),
+                            ).length
+                          }
+                          <small>项</small>
+                        </strong>
+                        <CheckCircle2 size={21} />
+                      </div>
+                    </div>
+                    <div className="dashboard-columns">
+                      <section className="card">
+                        <div className="section-heading">
+                          <h2>
+                            最近内容 <span>RECENT CONTENT</span>
+                          </h2>
+                          <button
+                            className="text-button"
+                            onClick={() => void navigate("contents")}
+                          >
+                            查看全部 <ArrowRight size={14} />
+                          </button>
+                        </div>
+                        {w.contents.length ? (
+                          w.contents
+                            .slice(0, 5)
+                            .map((c) => (
+                              <ContentRow
+                                key={c.id}
+                                c={c}
+                                w={w}
+                                onOpen={() => void navigate("editor", c.id)}
+                              />
+                            ))
+                        ) : (
+                          <Empty
+                            title="第一条内容，从这里开始"
+                            text="创建主题，整理事实，再写出各平台的表达。"
+                            action={
+                              <button
+                                className="secondary"
+                                onClick={() => setNewTitle("")}
+                              >
+                                <Plus size={16} />
+                                创建内容主题
+                              </button>
+                            }
+                          />
+                        )}
+                      </section>
+                      <section className="card">
+                        <div className="section-heading">
+                          <h2>
+                            接下来发布 <span>UP NEXT</span>
+                          </h2>
+                        </div>
+                        {pending.length ? (
+                          pending.slice(0, 4).map((j) => (
+                            <button
+                              className="upcoming"
+                              key={j.id}
+                              onClick={() => void navigate("records")}
+                            >
+                              <span className="date-tile">
+                                {new Date(j.scheduledAtUtc).getDate()}
+                                <small>
+                                  {new Date(j.scheduledAtUtc).getMonth() + 1}月
+                                </small>
+                              </span>
+                              <span>
+                                <strong>{j.title}</strong>
+                                <small>
+                                  {j.targetLabel} ·{" "}
+                                  {formatTime(j.scheduledAtUtc, j.timezone)}
+                                </small>
+                                <Badge platform={j.platform} />
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <Empty
+                            icon={CalendarDays}
+                            title="还没有发布安排"
+                            text="草稿就绪后，为每个目标安排人工截止时间。"
+                          />
+                        )}
+                      </section>
+                    </div>
+                    <section className="journey">
+                      <div className="journey-mark">
+                        <Sparkles size={23} />
+                      </div>
+                      <div>
+                        <h3>从素材到发布，留下一条完整记录</h3>
+                        <p>
+                          素材导入 <span>→</span> 平台草稿 <span>→</span>{" "}
+                          排期与发布包 <span>→</span> 人工回填
+                        </p>
+                      </div>
+                      <span className="pill">所有内容保存在本地</span>
+                    </section>
+                  </>
+                )}
+                {page === "contents" && (
+                  <>
+                    <div className="page-heading">
+                      <div>
+                        <div className="eyebrow">CONTENT LIBRARY</div>
+                        <h1>
+                          内容库{" "}
+                          <span className="count">{w.contents.length}</span>
+                        </h1>
+                        <p>一个主题，延展成各个平台的表达。</p>
+                      </div>
+                      <button
+                        className="primary"
+                        onClick={() => setNewTitle("")}
+                      >
+                        <Plus size={17} />
+                        新建内容
+                      </button>
+                    </div>
+                    <div className="toolbar">
+                      <div className="search">
+                        <Search size={16} />
+                        <input
+                          placeholder="搜索标题或正文"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                      <span className="muted">独立版本 · 本地保存</span>
+                    </div>
+                    <div className="card">
+                      {w.contents
+                        .filter((c) =>
+                          (c.title + c.variants.map((v) => v.body).join(""))
+                            .toLowerCase()
+                            .includes(search.toLowerCase()),
+                        )
                         .map((c) => (
                           <ContentRow
                             key={c.id}
@@ -618,163 +729,67 @@ function App() {
                             w={w}
                             onOpen={() => void navigate("editor", c.id)}
                           />
-                        ))
-                    ) : (
-                      <Empty
-                        title="第一条内容，从这里开始"
-                        text="创建主题，整理事实，再写出各平台的表达。"
-                        action={
-                          <button
-                            className="secondary"
-                            onClick={() => setNewTitle("")}
-                          >
-                            <Plus size={16} />
-                            创建内容主题
-                          </button>
-                        }
-                      />
-                    )}
-                  </section>
-                  <section className="card">
-                    <div className="section-heading">
-                      <h2>
-                        接下来发布 <span>UP NEXT</span>
-                      </h2>
+                        ))}
+                      {!w.contents.length && (
+                        <Empty
+                          title="还没有内容主题"
+                          text="选题、事实底稿和平台版本会集中保存在这里。"
+                        />
+                      )}
                     </div>
-                    {pending.length ? (
-                      pending.slice(0, 4).map((j) => (
-                        <button
-                          className="upcoming"
-                          key={j.id}
-                          onClick={() => void navigate("records")}
-                        >
-                          <span className="date-tile">
-                            {new Date(j.scheduledAtUtc).getDate()}
-                            <small>
-                              {new Date(j.scheduledAtUtc).getMonth() + 1}月
-                            </small>
-                          </span>
-                          <span>
-                            <strong>{j.title}</strong>
-                            <small>
-                              {j.targetLabel} ·{" "}
-                              {formatTime(j.scheduledAtUtc, j.timezone)}
-                            </small>
-                            <Badge platform={j.platform} />
-                          </span>
-                        </button>
-                      ))
-                    ) : (
-                      <Empty
-                        icon={CalendarDays}
-                        title="还没有发布安排"
-                        text="草稿就绪后，为每个目标安排人工截止时间。"
-                      />
-                    )}
-                  </section>
-                </div>
-                <section className="journey">
-                  <div className="journey-mark">
-                    <Sparkles size={23} />
-                  </div>
-                  <div>
-                    <h3>从素材到发布，留下一条完整记录</h3>
-                    <p>
-                      素材导入 <span>→</span> 平台草稿 <span>→</span>{" "}
-                      排期与发布包 <span>→</span> 人工回填
-                    </p>
-                  </div>
-                  <span className="pill">所有内容保存在本地</span>
-                </section>
-              </>
+                  </>
+                )}
+                {page === "assets" && (
+                  <Assets
+                    w={w}
+                    refresh={refresh}
+                    notice={notice}
+                    progress={progress}
+                  />
+                )}
+                {page === "accounts" && (
+                  <Accounts w={w} refresh={refresh} notice={notice} />
+                )}
+                {page === "calendar" && (
+                  <Calendar
+                    w={w}
+                    refresh={refresh}
+                    notice={notice}
+                    onRecords={() => void navigate("records")}
+                  />
+                )}
+                {page === "records" && (
+                  <Records w={w} refresh={refresh} notice={notice} />
+                )}
+                {page === "settings" && (
+                  <SettingsPage
+                    w={w}
+                    theme={theme}
+                    setTheme={setTheme}
+                    codex={codex}
+                    setCodex={setCodex}
+                    notice={notice}
+                    onRestore={(next) => {
+                      setW(next);
+                      setPage("dashboard");
+                    }}
+                  />
+                )}
+              </main>
             )}
-            {page === "contents" && (
-              <>
-                <div className="page-heading">
-                  <div>
-                    <div className="eyebrow">CONTENT LIBRARY</div>
-                    <h1>
-                      内容库 <span className="count">{w.contents.length}</span>
-                    </h1>
-                    <p>一个主题，延展成各个平台的表达。</p>
-                  </div>
-                  <button className="primary" onClick={() => setNewTitle("")}>
-                    <Plus size={17} />
-                    新建内容
-                  </button>
-                </div>
-                <div className="toolbar">
-                  <div className="search">
-                    <Search size={16} />
-                    <input
-                      placeholder="搜索标题或正文"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                  <span className="muted">独立版本 · 本地保存</span>
-                </div>
-                <div className="card">
-                  {w.contents
-                    .filter((c) =>
-                      (c.title + c.variants.map((v) => v.body).join(""))
-                        .toLowerCase()
-                        .includes(search.toLowerCase()),
-                    )
-                    .map((c) => (
-                      <ContentRow
-                        key={c.id}
-                        c={c}
-                        w={w}
-                        onOpen={() => void navigate("editor", c.id)}
-                      />
-                    ))}
-                  {!w.contents.length && (
-                    <Empty
-                      title="还没有内容主题"
-                      text="选题、事实底稿和平台版本会集中保存在这里。"
-                    />
-                  )}
-                </div>
-              </>
-            )}
-            {page === "assets" && (
-              <Assets
-                w={w}
-                refresh={refresh}
-                notice={notice}
-                progress={progress}
-              />
-            )}
-            {page === "accounts" && (
-              <Accounts w={w} refresh={refresh} notice={notice} />
-            )}
-            {page === "calendar" && (
-              <Calendar
-                w={w}
-                refresh={refresh}
-                notice={notice}
-                onRecords={() => void navigate("records")}
-              />
-            )}
-            {page === "records" && (
-              <Records w={w} refresh={refresh} notice={notice} />
-            )}
-            {page === "settings" && (
-              <SettingsPage
-                w={w}
-                theme={theme}
-                setTheme={setTheme}
-                codex={codex}
-                setCodex={setCodex}
-                notice={notice}
-                onRestore={(next) => {
-                  setW(next);
-                  setPage("dashboard");
-                }}
-              />
-            )}
-          </main>
+            <Assistant
+              key={w.project.id}
+              w={w}
+              page={page as CodexView["page"]}
+              viewingContent={page === "editor" ? content : undefined}
+              hidden={!assistant}
+              codex={codex}
+              setCodex={setCodex}
+              refresh={refresh}
+              guard={guard}
+              notice={notice}
+            />
+          </div>
         )}
       </div>
       {toast && (
@@ -1839,19 +1854,24 @@ function ScheduleModal({
 }
 function Assistant({
   w,
-  content,
+  page,
+  viewingContent,
+  hidden,
   codex,
   setCodex,
   refresh,
   guard,
   notice,
 }: Common & {
-  content: Content;
+  page: CodexView["page"];
+  viewingContent?: Content;
+  hidden: boolean;
   codex: CodexStatus;
   setCodex: (s: CodexStatus) => void;
   guard: React.MutableRefObject<() => Promise<boolean>>;
 }) {
-  const [prompt, setPrompt] = useState(""),
+  const [scopeId, setScopeId] = useState(""),
+    [prompts, setPrompts] = useState<Record<string, string>>({}),
     [mode, setMode] = useState<"task" | "draft">("task"),
     [model, setModel] = useState(
       () => localStorage.getItem("codex-model") ?? "",
@@ -1859,10 +1879,49 @@ function Assistant({
     [effort, setEffort] = useState(
       () => localStorage.getItem("codex-effort") ?? "",
     ),
-    [variantId, setVariantId] = useState(content.variants[0]?.id ?? ""),
-    [live, setLive] = useState(""),
-    [activity, setActivity] = useState(""),
+    [variantId, setVariantId] = useState(""),
+    [live, setLive] = useState<Record<string, string>>({}),
+    [activity, setActivity] = useState<Record<string, string>>({}),
     [busy, setBusy] = useState(false);
+  const content = w.contents.find((c) => c.id === scopeId);
+  const scroll = useRef<HTMLDivElement>(null);
+  const followTail = useRef(true);
+  const prompt = prompts[scopeId] ?? "";
+  const setPrompt = (value: string) =>
+    setPrompts((old) => ({ ...old, [scopeId]: value }));
+  const pageNames: Record<CodexView["page"], string> = {
+    dashboard: "工作台 · 选题策划",
+    contents: "内容库",
+    editor: "内容编辑",
+    assets: "素材整理",
+    calendar: "发布排期",
+    records: "发布复盘",
+    accounts: "账号与定位",
+    settings: "设置与备份",
+  };
+  const suggestions: Record<CodexView["page"], string[]> = {
+    dashboard: [
+      "结合账号定位，帮我策划 5 个选题",
+      "根据现有素材，建议下一条内容",
+      "帮我安排本周内容计划",
+    ],
+    contents: [
+      "梳理现有选题，建议优先做哪些",
+      "检查内容是否重复，找出可以延展的角度",
+    ],
+    editor: ["帮我理清当前内容的核心观点", "根据事实底稿检查表达与逻辑"],
+    assets: [
+      "根据素材库，推荐适合的选题方向",
+      "帮我梳理现有素材，还需要补充什么",
+    ],
+    calendar: ["检查发布安排，建议合适的内容节奏", "帮我规划下一周的发布计划"],
+    records: [
+      "根据已有发布记录做复盘，不编造数据",
+      "梳理尚未完成的发布，建议下一步",
+    ],
+    accounts: ["帮我梳理账号定位和目标受众", "为各个平台建议适合的内容方向"],
+    settings: ["帮我检查本地工作流程是否完整", "解释如何备份和恢复这个项目"],
+  };
   const selectedModel = codex.models.find(
     (m) => m.id === (model || codex.defaultModel),
   );
@@ -1896,14 +1955,25 @@ function Assistant({
     if (codex.state === "ready" && effort !== validEffort)
       setEffort(validEffort);
   }, [model, effort, validEffort, codex.state, codex.models]);
-  const runs = w.runs.filter((r) => r.contentId === content.id),
+  const runs = w.runs.filter((r) => (r.contentId ?? "") === scopeId),
     active = runs.find((r) =>
       ["running", "queued", "stopping"].includes(r.status),
     );
   useEffect(() => {
+    if (scopeId && !content) {
+      setScopeId("");
+      setVariantId("");
+      setMode("task");
+    }
+  }, [scopeId, content]);
+  useEffect(() => {
+    if (!hidden && scroll.current && followTail.current)
+      scroll.current.scrollTop = scroll.current.scrollHeight;
+  }, [w.runs, live, hidden, scopeId]);
+  useEffect(() => {
     if (
       mode === "draft" &&
-      content.variants.length &&
+      content?.variants.length &&
       !content.variants.some((v) => v.id === variantId)
     )
       setVariantId(content.variants[0].id);
@@ -1911,16 +1981,19 @@ function Assistant({
   useEffect(
     () =>
       api.onEvent((e) => {
-        if (
-          e.projectId === w.project.id &&
-          e.type === "codex-delta" &&
-          runs.some((r) => r.id === e.runId)
-        )
-          setLive((text) => text + (e.text ?? ""));
-        if (e.projectId === w.project.id && e.type === "codex-activity")
-          setActivity(e.message ?? "");
+        if (e.projectId !== w.project.id || !e.runId) return;
+        const id = e.runId;
+        if (e.type === "codex-delta")
+          setLive((old) => ({
+            ...old,
+            [id]:
+              (old[id] ?? w.runs.find((r) => r.id === id)?.output ?? "") +
+              (e.text ?? ""),
+          }));
+        if (e.type === "codex-activity")
+          setActivity((old) => ({ ...old, [id]: e.message ?? "" }));
       }),
-    [w.project.id, w.runs, content.id],
+    [w.project.id, w.runs],
   );
   const connect = async () => {
     setBusy(true);
@@ -1936,7 +2009,7 @@ function Assistant({
   const [submitting, setSubmitting] = useState(false);
   const canSend =
     !!prompt.trim() &&
-    (mode !== "draft" || !!variantId) &&
+    (mode !== "draft" || !!content?.variants.some((v) => v.id === variantId)) &&
     codex.state === "ready" &&
     !w.project.readOnly &&
     !active &&
@@ -1947,11 +2020,11 @@ function Assistant({
     setSubmitting(true);
     try {
       if (!(await guard.current())) return;
-      setLive("");
-      setActivity("");
+      followTail.current = true;
       await api.call("codex.start", {
         projectId: w.project.id,
-        contentId: content.id,
+        contentId: content?.id,
+        view: { page, contentId: viewingContent?.id },
         variantId: variantId || undefined,
         mode,
         prompt,
@@ -1968,7 +2041,7 @@ function Assistant({
     }
   };
   return (
-    <aside className="assistant">
+    <aside className="assistant" aria-label="Codex 助手" hidden={hidden}>
       <div className="assistant-header">
         <div className="ai-icon">
           <Sparkles size={18} />
@@ -1989,12 +2062,47 @@ function Assistant({
         <span>{w.project.name}</span>
         <span className="context-label">当前项目</span>
       </div>
-      <div className="assistant-scroll">
+      <div className="assistant-scope">
+        <label>
+          对话范围
+          <select
+            aria-label="Codex 对话范围"
+            value={scopeId}
+            disabled={submitting}
+            onChange={(e) => {
+              followTail.current = true;
+              setScopeId(e.target.value);
+              setVariantId("");
+              setMode("task");
+            }}
+          >
+            <option value="">项目对话 · 从选题开始</option>
+            {w.contents.map((c) => (
+              <option key={c.id} value={c.id}>
+                主题 · {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <small>
+          当前页面：{pageNames[page]}
+          {viewingContent ? ` · ${viewingContent.title}` : ""}
+        </small>
+      </div>
+      <div
+        className="assistant-scroll"
+        ref={scroll}
+        onScroll={(e) => {
+          const node = e.currentTarget;
+          followTail.current =
+            node.scrollHeight - node.scrollTop - node.clientHeight < 64;
+        }}
+      >
         {codex.state !== "ready" && (
           <div className="ai-welcome">
             <Sparkles size={27} />
             <h3>你的项目内容搭档</h3>
-            <p>直接修改文件、执行命令、查找资料，也可以为当前平台起草内容。</p>
+            <p>从选题、素材整理到写作和发布复盘，随时讨论或执行任务。</p>
             <button
               className="secondary"
               disabled={busy}
@@ -2008,21 +2116,28 @@ function Assistant({
         {runs.length === 0 && codex.state === "ready" && (
           <div className="ai-welcome">
             <Sparkles size={27} />
-            <h3>这次需要完成什么？</h3>
-            <p>已开启完全访问权限。描述任务，或给出需要修改的文件路径。</p>
+            <h3>{content ? "这次需要完成什么？" : "从一个想法开始"}</h3>
+            <p>
+              {content
+                ? "围绕这个主题讨论，或选择平台版本起草。"
+                : "不用先创建内容。告诉我目标、灵感或难题，我们一起确定下一步。"}
+            </p>
           </div>
         )}
         <div className="quick-actions">
-          {[
-            "按当前平台与语言起草",
-            "根据事实底稿检查并改写",
-            "翻译成英文，保持语气自然",
-            "整理为适合群聊的简洁文案",
-          ].map((t) => (
+          {(content
+            ? [
+                "按当前平台与语言起草",
+                "根据事实底稿检查并改写",
+                "翻译成英文，保持语气自然",
+                "整理为适合群聊的简洁文案",
+              ]
+            : suggestions[page]
+          ).map((t) => (
             <button
               key={t}
               onClick={() => {
-                setMode("draft");
+                setMode(content ? "draft" : "task");
                 setPrompt(t);
               }}
             >
@@ -2048,8 +2163,8 @@ function Assistant({
                 )}
               </div>
               <pre>
-                {active?.id === run.id && live
-                  ? live
+                {active?.id === run.id && live[run.id]
+                  ? live[run.id]
                   : run.output || run.error || "正在准备当前身份与素材…"}
               </pre>
               {run.error && run.output && (
@@ -2085,26 +2200,33 @@ function Assistant({
             disabled={!!active}
             onChange={(e) => setMode(e.target.value as "task" | "draft")}
           >
-            <option value="task">执行任务</option>
-            <option value="draft">起草版本</option>
+            <option value="task">讨论 / 执行任务</option>
+            <option value="draft" disabled={!content}>
+              起草版本
+            </option>
           </select>
         </label>
-        <label>
-          {mode === "draft" ? "写入版本" : "参考版本"}
-          <select
-            aria-label="Codex 参考版本"
-            value={variantId}
-            onChange={(e) => setVariantId(e.target.value)}
-          >
-            {mode === "task" && <option value="">整个主题</option>}
-            {content.variants.map((v) => (
-              <option key={v.id} value={v.id}>
-                {getPlatformDefinition(w.platforms, v.platform).name} ·{" "}
-                {v.locale}
-              </option>
-            ))}
-          </select>
-        </label>
+        {content && (
+          <label>
+            {mode === "draft" ? "写入版本" : "参考版本"}
+            <select
+              aria-label="Codex 参考版本"
+              value={variantId}
+              onChange={(e) => setVariantId(e.target.value)}
+            >
+              {mode === "task" && <option value="">整个主题</option>}
+              {content.variants.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {getPlatformDefinition(w.platforms, v.platform).name} ·{" "}
+                  {v.locale}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {mode === "draft" && !content?.variants.length && (
+          <p className="hint">请先在内容编辑中添加平台版本。</p>
+        )}
         <label>
           思考强度
           <select
@@ -2149,7 +2271,7 @@ function Assistant({
             }}
             placeholder={
               mode === "task"
-                ? "描述要执行的任务，可直接填写文件路径…"
+                ? "聊聊选题、素材或下一步，也可以直接交代任务…"
                 : "描述文案要求，或选择一个动作…"
             }
             rows={3}
@@ -2197,7 +2319,7 @@ function Assistant({
         <p className="hint">Enter 发送 · Shift+Enter 换行</p>
         <p>
           {active
-            ? activity || "结果将写回发起任务的项目"
+            ? activity[active.id] || "结果将写回发起任务的项目"
             : mode === "task"
               ? "Full Access · 可改本机文件、执行命令和联网"
               : "Full Access · 文案写回所选版本"}

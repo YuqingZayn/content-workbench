@@ -881,13 +881,13 @@ a {
   font-size: 10px;
   margin-top: 5px;
 }
-.editor-layout {
+.workbench-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
+  grid-template-columns: minmax(0, 1fr) clamp(310px, 24vw, 380px);
   flex: 1;
   min-height: 0;
 }
-.editor-layout.no-assistant {
+.workbench-layout.no-assistant {
   grid-template-columns: 1fr;
 }
 .editor-main {
@@ -1213,6 +1213,48 @@ a {
   flex-direction: column;
   background: var(--assistant);
   min-height: 0;
+  min-width: 0;
+}
+.assistant[hidden] {
+  display: none;
+}
+.workbench-layout > .main-scroll {
+  min-width: 0;
+}
+.assistant-scope {
+  padding: 4px 17px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.assistant-scope label {
+  font-size: 10px;
+  color: var(--secondary);
+}
+.assistant-scope select {
+  font-size: 11px;
+  margin-top: 6px;
+  padding: 8px;
+}
+.assistant-scope small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.workbench-layout:not(.no-assistant) .main-scroll {
+  container-type: inline-size;
+}
+@container (max-width: 950px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashboard-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page-heading {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
 }
 .assistant-header {
   display: flex;
@@ -1379,6 +1421,8 @@ a {
   font-size: 11px;
 }
 .chat-user {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   background: var(--tint);
   border-radius: 9px 9px 1px 9px;
   margin-left: 16px;
@@ -2089,8 +2133,8 @@ a {
   .main-scroll {
     padding: 29px 27px;
   }
-  .editor-layout {
-    grid-template-columns: minmax(0, 1fr) 280px;
+  .workbench-layout {
+    grid-template-columns: minmax(0, 1fr) 310px;
   }
   .compose-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -2141,8 +2185,8 @@ a {
   .calendar-job {
     padding: 7px 5px;
   }
-  .editor-layout {
-    grid-template-columns: minmax(0, 1fr) 265px;
+  .workbench-layout {
+    grid-template-columns: minmax(0, 1fr) 290px;
   }
   .editor-footer .button-row {
     gap: 5px;

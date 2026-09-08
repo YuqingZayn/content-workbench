@@ -34,6 +34,7 @@ import {
   platformIdSchema,
   platformDetailsSchema,
   themeSchema,
+  codexViewSchema,
   type AppEvent,
 } from "../contracts/model";
 protocol.registerSchemesAsPrivileged([
@@ -167,7 +168,8 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
       z
         .object({
           projectId: z.uuid(),
-          contentId: z.uuid(),
+          contentId: z.uuid().optional(),
+          view: codexViewSchema.optional(),
           variantId: z.uuid().optional(),
           mode: z.enum(["draft", "task"]).optional(),
           prompt: z.string().min(1).max(20000),

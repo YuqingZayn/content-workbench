@@ -110,6 +110,9 @@ test("native platform forms, media formats, message editing and persisted metada
     await page.getByRole("button", { name: "新建内容", exact: true }).click();
     await page.getByLabel("主题名称", { exact: true }).fill("各平台发布准备");
     await page.getByRole("button", { name: "创建主题", exact: true }).click();
+    await page
+      .getByLabel("Codex 对话范围", { exact: true })
+      .selectOption({ label: "主题 · 各平台发布准备" });
     await expect(
       page.getByLabel("Codex 任务方式", { exact: true }),
     ).toHaveValue("task");

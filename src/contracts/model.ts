@@ -262,7 +262,7 @@ export interface Job {
 export interface AiRun {
   id: string;
   projectId: string;
-  contentId: string;
+  contentId?: string;
   variantId?: string;
   mode?: "draft" | "task";
   access?: "full-access";
@@ -277,6 +277,20 @@ export interface AiRun {
   error?: string;
   createdAt: string;
 }
+export const codexViewSchema = z.object({
+  page: z.enum([
+    "dashboard",
+    "contents",
+    "editor",
+    "assets",
+    "calendar",
+    "records",
+    "accounts",
+    "settings",
+  ]),
+  contentId: z.uuid().optional(),
+});
+export type CodexView = z.infer<typeof codexViewSchema>;
 export interface Workspace {
   project: ProjectView;
   platforms: PlatformDefinition[];
