@@ -1,6 +1,6 @@
 {
   "name": "content-workbench",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "本地优先的账号项目内容工作台",
   "private": true,
   "type": "module",
@@ -12,7 +12,8 @@
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests scripts --ignore-pattern src/services/codex/generated",
-    "test": "tsx --test tests/domain.test.ts",
+    "test": "tsx --test tests/domain.test.ts tests/web-login.test.ts",
+    "verify:web-login": "npm run build && tsx scripts/verify-xhs-login.ts",
     "test:integration": "tsx --test tests/integration.test.ts",
     "test:media": "npm run build && tsx --test tests/thumbnails.test.ts",
     "test:e2e": "npm run build && playwright test",
@@ -51,7 +52,7 @@
     "electronDist": "node_modules/electron/dist",
     "productName": "Content Workbench",
     "directories": {
-      "output": "release/0.2.0"
+      "output": "release/0.2.1"
     },
     "files": [
       "dist/**/*",

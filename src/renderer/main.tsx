@@ -79,6 +79,7 @@ import {
   JobAutomationActions,
   publishStatus,
 } from "./Automation";
+import { WebLoginPanel } from "./WebLogin";
 const api = window.workbench;
 const statusName: Record<string, string> = {
   ...publishStatus,
@@ -2579,6 +2580,7 @@ function Accounts({ w, refresh, notice }: Common) {
       timezone: w.project.timezone,
     }),
     [tab, setTab] = useState("accounts"),
+    [loginAccountId, setLoginAccountId] = useState(""),
     [accountModal, setAccountModal] = useState(false),
     [targetFor, setTargetFor] = useState<Account | null>(null),
     [platform, setPlatform] = useState<Platform>("wechat"),
@@ -2604,10 +2606,21 @@ function Accounts({ w, refresh, notice }: Common) {
           <p>先明确“我是谁”，再决定“向哪里表达”。</p>
         </div>
         {tab === "accounts" && (
-          <button className="primary" onClick={() => setAccountModal(true)}>
-            <Plus size={17} />
-            登记平台账号
-          </button>
+          <div className="button-row">
+            <button
+              className="secondary"
+              onClick={() => {
+                setLoginAccountId("");
+                setTab("web-login");
+              }}
+            >
+              小红书网页登录
+            </button>
+            <button className="primary" onClick={() => setAccountModal(true)}>
+              <Plus size={17} />
+              登记平台账号
+            </button>
+          </div>
         )}
       </div>
       <div className="tabs">
@@ -2616,6 +2629,12 @@ function Accounts({ w, refresh, notice }: Common) {
           onClick={() => setTab("accounts")}
         >
           平台账号与目标
+        </button>
+        <button
+          className={tab === "web-login" ? "selected" : ""}
+          onClick={() => setTab("web-login")}
+        >
+          网页登录
         </button>
         <button
           className={tab === "connections" ? "selected" : ""}
@@ -2636,7 +2655,15 @@ function Accounts({ w, refresh, notice }: Common) {
           平台管理
         </button>
       </div>
-      {tab === "connections" ? (
+      {tab === "web-login" ? (
+        <WebLoginPanel
+          key={loginAccountId || "web-login"}
+          w={w}
+          initialAccountId={loginAccountId}
+          refresh={refresh}
+          notice={notice}
+        />
+      ) : tab === "connections" ? (
         <ConnectionsPanel w={w} refresh={refresh} notice={notice} />
       ) : tab === "platforms" ? (
         <PlatformManager />
@@ -2736,7 +2763,8 @@ function Accounts({ w, refresh, notice }: Common) {
           <div className="info-banner">
             <Users size={18} />
             <p>
-              可选择内置平台或添加自己的平台。账号登记不代表平台授权；自动连接请在“自动发布连接”中单独配置。
+              小红书可在“网页登录”中扫码登录。账号登记用于本地管理；官方 API
+              授权请在“自动发布连接”中配置。
             </p>
           </div>
           {!w.accounts.length ? (
@@ -2782,6 +2810,18 @@ function Accounts({ w, refresh, notice }: Common) {
                     )}
                   </div>
                   <div className="account-footer">
+                    {a.platform === "xiaohongshu" &&
+                      a.accountType !== "mock" && (
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            setLoginAccountId(a.id);
+                            setTab("web-login");
+                          }}
+                        >
+                          登录 / 查看小红书
+                        </button>
+                      )}
                     <button
                       className="text-button"
                       onClick={() => {
@@ -2878,7 +2918,9 @@ function Accounts({ w, refresh, notice }: Common) {
                 <option value="official">公众号账号</option>
               </select>
             </label>
-            <p className="hint">仅保存公开标识与用途。自动发布尚未接入。</p>
+            <p className="hint">
+              此处保存公开标识与用途。保存后可使用网页登录或配置对应平台连接。
+            </p>
             <div className="modal-actions">
               <button className="primary">保存账号</button>
             </div>

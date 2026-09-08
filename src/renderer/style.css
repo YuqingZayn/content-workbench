@@ -2716,3 +2716,12 @@ a {
 .automation-actions .button-row { margin-top: 10px; flex-wrap: wrap; }
 .automation-events { padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; max-height: 220px; overflow: auto; }
 .automation-events p { font-size: 12px; }
+.web-login-panel { display: grid; gap: 24px; padding: 30px; max-width: 1000px; }
+.web-login-heading { display: flex; align-items: center; gap: 16px; }
+.web-login-heading h2 { margin: 0 0 8px; }
+.web-login-heading p, .web-login-status p { margin: 8px 0; }
+.web-login-panel form { display: grid; gap: 20px; }
+.web-login-panel .button-row { flex-wrap: wrap; }
+.web-login-panel .primary { justify-self: start; }
+.web-login-status { padding: 20px; border: 1px solid var(--border); border-radius: 12px; overflow-wrap: anywhere; }
+.account-footer { flex-wrap: wrap; gap: 12px; }

@@ -24,6 +24,7 @@ import { MockAdapter } from "../services/publishing/mock";
 import { officialAdapters } from "../services/publishing/platforms";
 import { connectionSchema } from "../contracts/automation";
 import { ThumbnailService } from "../services/thumbnails";
+import { WebLoginService } from "./web-login";
 import { z } from "zod";
 import { WorkspaceService } from "../services/workspace";
 import { CodexService } from "../services/codex/service";
@@ -56,11 +57,14 @@ let service: WorkspaceService;
 let codex: CodexService;
 let thumbnails: ThumbnailService;
 let publisher: PublisherService;
+let webLogin: WebLoginService;
 let tray: Tray;
 let closing = false;
+let shuttingDown = false;
 let queue: Promise<unknown> = Promise.resolve();
 const emit = (event: AppEvent) => {
-  if (win && !win.isDestroyed()) win.webContents.send("workbench:event", event);
+  if (win && !win.isDestroyed() && !win.webContents.isDestroyed())
+    win.webContents.send("workbench:event", event);
 };
 const pid = z.object({ projectId: z.uuid() });
 async function selectDirectory(title: string) {
@@ -177,6 +181,17 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
     return codex.stop(p.projectId, p.runId);
   }
   const { projectId } = pid.parse(data);
+  if (method === "web-login.list") return webLogin.list(projectId);
+  if (
+    ["web-login.open", "web-login.check", "web-login.logout"].includes(method)
+  ) {
+    const { accountId } = z.object({ accountId: z.uuid() }).parse(data);
+    return method === "web-login.open"
+      ? webLogin.open(projectId, accountId)
+      : method === "web-login.logout"
+        ? webLogin.logout(projectId, accountId)
+        : webLogin.check(projectId, accountId);
+  }
   if (method === "background.stop") {
     publisher.setManagement(projectId, false);
     return publisher.background();
@@ -471,6 +486,7 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
 }
 app.whenReady().then(async () => {
   service = new WorkspaceService(app.getPath("userData"));
+  webLogin = new WebLoginService(service, () => win, emit);
   publisher = new PublisherService(
     service,
     new ConnectionStore(path.join(app.getPath("userData"), "publishing"), {
@@ -654,6 +670,8 @@ app.whenReady().then(async () => {
           "codex.stop",
           "app.bootstrap",
           "project.load",
+          "web-login.list",
+          "web-login.check",
         ].includes(method)
       )
         data = await execute();
@@ -694,6 +712,7 @@ app.whenReady().then(async () => {
         });
     }
   });
+  win.on("closed", () => app.quit());
   await win.loadURL(entry);
   win.show();
   if (
@@ -727,8 +746,11 @@ process.on("message", (message: unknown) => {
 });
 app.on("window-all-closed", () => app.quit());
 app.on("before-quit", () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
   closing = true;
   publisher?.stop();
+  webLogin?.close();
   tray?.destroy();
   codex?.close();
   thumbnails?.close();

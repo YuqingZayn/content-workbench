@@ -37,3 +37,7 @@ exports/<jobId>/
 采用单写入进程锁。普通文件夹内现有文件不覆盖。备份使用 SQLite checkpoint 后的一致副本，恢复到空目录后暂停未完成任务。此版本不提供多人同时编辑、云同步和视频转码。
 
 接口根据 [Electron protocol](https://www.electronjs.org/docs/latest/api/protocol) 与 [Codex App Server](https://learn.chatgpt.com/docs/app-server) 设计，实际协议字段以本机 0.153.3 生成类型和真实握手结果为准。
+
+## 小红书网页登录
+
+`WebLoginService` 管理每个 projectId + accountId 的独立 Electron 持久 Session；远程 BrowserWindow 无工作台 preload 和 IPC。只读身份检查才产生“已登录”，重启后先标记会话待检查；关闭、退出与异步返回以账号隔离。认证状态事件只更新网页登录视图，避免每次检查重新加载整个业务项目。详见 [网页登录说明](xiaohongshu-login.md)。

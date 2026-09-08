@@ -46,3 +46,5 @@ storage-state*.json
 id_rsa
 id_ed25519
 *.har
+web-logins/
+Partitions/

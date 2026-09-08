@@ -60,3 +60,7 @@ Git 忽略规则防止普通添加与提交，不会自动移除已跟踪文件�
 ## V0.2 软件录入的发布凭据
 
 平台令牌和 Webhook 在 Electron 用户数据目录 `publishing/credentials.json` 中使用系统 safeStorage 加密，不返回界面，不进入业务项目备份。手工文件仍放 `local-private/`。连接检查不发送帖子，详情见 [连接与恢复](v0.2-publishing.md)。
+
+## 0.2.1 小红书网页会话
+
+小红书登录使用应用用户数据目录中的专用 Chromium `Partitions/`，公开身份状态位于 `web-logins/`。两者均加入 Git 忽略；不要把应用用户数据作为业务项目备份或上传。工作台不提供 Cookie 导出，不读取其他浏览器会话，详见 [网页登录](xiaohongshu-login.md)。
