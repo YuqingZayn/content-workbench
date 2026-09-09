@@ -7,6 +7,12 @@ import { parseRange, safePath, uuid, within } from "../src/services/files";
 import { JsonLines, findCodex } from "../src/services/codex/connection";
 import { variantSchema, platformIdSchema } from "../src/contracts/model";
 import { defaultPlatforms } from "../src/contracts/model";
+import type { Asset } from "../src/contracts/model";
+import {
+  coverRuleFor,
+  effectiveCoverId,
+  selectCover,
+} from "../src/contracts/covers";
 import {
   composerFor,
   defaultPublishing,
@@ -51,6 +57,83 @@ test("legacy drafts get isolated publishing defaults and native formats respect 
     publishingSchema.parse({ youtube: { format: "shorts" } }).wechat.format,
     "message",
   );
+});
+
+test("covers follow body order for images, remain independent for videos and respect native format changes", () => {
+  const first = { id: uuid(), kind: "image" } as Asset;
+  const second = { id: uuid(), kind: "image" } as Asset;
+  const video = { id: uuid(), kind: "video" } as Asset;
+  const assets = [first, second, video];
+  const definition = defaultPlatforms.find((p) => p.id === "xiaohongshu")!;
+  let v = variantSchema.parse({
+    id: uuid(),
+    platform: "xiaohongshu",
+    locale: "zh-CN",
+    title: "",
+    body: "内容",
+    tags: [],
+    assetIds: [first.id, second.id],
+    coverId: second.id,
+    segments: [],
+    revision: 0,
+    bodyHash: "",
+    readiness: "draft",
+  });
+  assert.equal(
+    effectiveCoverId(v, definition, assets),
+    first.id,
+    "stale coverId cannot override body order",
+  );
+  v = { ...v, ...selectCover(v, coverRuleFor(v, definition), second.id) };
+  assert.deepEqual(v.assetIds, [second.id, first.id]);
+  assert.equal(effectiveCoverId(v, definition, assets), second.id);
+  v.assetIds.reverse();
+  assert.equal(effectiveCoverId(v, definition, assets), first.id);
+  v.publishing.xiaohongshu.format = "video";
+  v.assetIds = [video.id];
+  assert.equal(composerFor(v, definition), "video");
+  assert.equal(coverRuleFor(v, definition).mode, "independent");
+  v = { ...v, ...selectCover(v, coverRuleFor(v, definition), first.id) };
+  assert.deepEqual(
+    v.assetIds,
+    [video.id],
+    "selecting an independent cover never adds a body attachment",
+  );
+  assert.equal(effectiveCoverId(v, definition, assets), first.id);
+  assert.equal(
+    publicationSegments(v, definition, assets).filter((s) => s.type === "image")
+      .length,
+    0,
+  );
+  v.publishing.xiaohongshu.format = "images";
+  assert.ok(
+    publicationWarnings(v, definition, assets).some((w) =>
+      w.includes("仍有关联视频"),
+    ),
+  );
+  assert.equal(
+    effectiveCoverId(v, definition, assets),
+    null,
+    "a video first item is not an image cover",
+  );
+  assert.equal(
+    v.coverId,
+    first.id,
+    "format switch preserves independent draft cover",
+  );
+
+  const wx = defaultPlatforms.find((p) => p.id === "wechat_official")!;
+  assert.equal(coverRuleFor(v, wx).mode, "independent");
+  v.publishing.wechat_official.format = "images";
+  assert.equal(coverRuleFor(v, wx).mode, "first_media");
+  const ig = defaultPlatforms.find((p) => p.id === "instagram")!;
+  v.publishing.instagram.format = "story";
+  assert.equal(effectiveCoverId(v, ig, assets), null);
+  const yt = defaultPlatforms.find((p) => p.id === "youtube")!;
+  v.publishing.youtube.format = "shorts";
+  assert.equal(coverRuleFor(v, yt).mode, "independent");
+  assert.match(coverRuleFor(v, yt).note, /分别保存/);
+  assert.equal(coverRuleFor(v, { ...yt, composer: "chat" }).mode, "none");
 });
 
 test("publication text keeps links, chapters, tags and explicit message order consistent", () => {

@@ -78,6 +78,14 @@ async function fixture(provider: "discord" | "x" | "instagram" | "facebook") {
   } as unknown as SnapshotInput;
   return { c, input };
 }
+
+test("image-only automatic adapters do not silently discard an independent cover", async () => {
+  const { input } = await fixture("x");
+  input.variant.coverId = "independent-cover";
+  await assert.rejects(new XAdapter().validate(input), /尚不支持单独提交封面/);
+  input.variant.coverId = input.media[0].id;
+  await new XAdapter().validate(input);
+});
 test("Discord requires a matching channel receipt, disables mentions and marks timeout unknown", async () => {
   const { c, input } = await fixture("discord");
   let count = 0;

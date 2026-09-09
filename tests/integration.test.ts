@@ -31,6 +31,200 @@ import {
 import type { Variant } from "../src/contracts/model";
 import type { CodexConnection } from "../src/services/codex/connection";
 
+test("cover imports deduplicate, persist independently, and export frozen cover instructions without adding body media", async () => {
+  const { root, workspace, w } = await setup();
+  try {
+    const imported = await workspace.importAssets(
+      w.project.id,
+      [
+        path.resolve("tests/fixtures/demo-1.png"),
+        path.resolve("tests/fixtures/demo-2.png"),
+      ],
+      "copy",
+    );
+    const coverId = imported[0].assetId!;
+    const otherId = imported[1].assetId!;
+    assert.ok(coverId);
+    assert.equal(
+      (
+        await workspace.importAssets(
+          w.project.id,
+          [path.resolve("tests/fixtures/demo-1.png")],
+          "copy",
+        )
+      )[0].assetId,
+      coverId,
+    );
+    let c = workspace.createContent(w.project.id, "独立封面验收");
+    c = workspace.addVariant(w.project.id, c.id, "youtube", "zh-CN");
+    let v = c.variants.at(-1)!;
+    v = workspace
+      .saveVariant(w.project.id, c.id, {
+        variant: { ...v, body: "视频简介", coverId },
+        baseRevision: v.revision,
+        baseHash: v.bodyHash,
+      })
+      .variants.at(-1)!;
+    v = workspace
+      .saveVariant(w.project.id, c.id, {
+        variant: { ...v, readiness: "ready" },
+        baseRevision: v.revision,
+        baseHash: v.bodyHash,
+      })
+      .variants.at(-1)!;
+    assert.deepEqual(v.assetIds, []);
+    assert.throws(
+      () => workspace.removeAsset(w.project.id, coverId),
+      /仍被草稿引用/,
+    );
+    assert.throws(
+      () =>
+        workspace.saveVariant(w.project.id, c.id, {
+          variant: { ...v, coverId: uuid() },
+          baseRevision: v.revision,
+          baseHash: v.bodyHash,
+        }),
+      /不属于此项目/,
+    );
+    const account = workspace
+      .addAccount(w.project.id, {
+        platform: "youtube",
+        label: "验收",
+        externalId: "",
+        accountType: "profile",
+      })
+      .accounts.at(-1)!;
+    const target = workspace
+      .addTarget(w.project.id, {
+        accountId: account.id,
+        label: "本地验收",
+        kind: "profile",
+      })
+      .targets.at(-1)!;
+    const [job] = await workspace.schedule(w.project.id, {
+      contentId: c.id,
+      variantId: v.id,
+      targetIds: [target.id],
+      scheduledAtUtc: "2030-01-01T00:00:00Z",
+      timezone: "Asia/Shanghai",
+    });
+    workspace.saveVariant(w.project.id, c.id, {
+      variant: { ...v, coverId: otherId },
+      baseRevision: v.revision,
+      baseHash: v.bodyHash,
+    });
+    workspace.savePlatform(w.project.id, {
+      id: "youtube",
+      name: "修改后平台",
+      color: "#112233",
+      composer: "chat",
+    });
+    const exported = workspace.exportJob(w.project.id, job.id);
+    const m = readJson<{
+      variant: Variant;
+      media: Record<string, { file: string }>;
+    }>(path.join(exported, "manifest.json"));
+    assert.equal(m.variant.coverId, coverId);
+    assert.ok(existsSync(path.join(exported, m.media[coverId].file)));
+    const info = readFileSync(path.join(exported, "发布信息.md"), "utf8");
+    assert.ok(info.includes(`封面文件：${m.media[coverId].file}`));
+    assert.match(info, /封面用途：可单独准备封面/);
+    assert.match(info, /封面资料核查日期：2026-09-09/);
+    assert.doesNotMatch(
+      readFileSync(path.join(exported, "发送顺序.md"), "utf8"),
+      /\.png/,
+    );
+    assert.ok(
+      workspace
+        .histories(w.project.id, c.id, v.id)
+        .some((h) => h.variants.some((x) => x.coverId === coverId)),
+    );
+    workspace.closeAll();
+    const reopened = await workspace.open(root);
+    assert.equal(
+      reopened.contents.find((x) => x.id === c.id)!.variants.at(-1)!.coverId,
+      otherId,
+    );
+  } finally {
+    workspace.closeAll();
+  }
+});
+
+test("first-image snapshot uses the reordered body image and labels any retained independent cover", async () => {
+  const { workspace, w } = await setup();
+  try {
+    const result = await workspace.importAssets(
+      w.project.id,
+      [
+        path.resolve("tests/fixtures/demo-1.png"),
+        path.resolve("tests/fixtures/demo-2.png"),
+      ],
+      "copy",
+    );
+    const [first, second] = result.map((r) => r.assetId!);
+    let c = workspace.createContent(w.project.id, "首图验收");
+    c = workspace.addVariant(w.project.id, c.id, "xiaohongshu", "zh-CN");
+    let v = c.variants.at(-1)!;
+    v = workspace
+      .saveVariant(w.project.id, c.id, {
+        variant: {
+          ...v,
+          body: "图文",
+          assetIds: [second, first],
+          coverId: first,
+        },
+        baseRevision: v.revision,
+        baseHash: v.bodyHash,
+      })
+      .variants.at(-1)!;
+    v = workspace
+      .saveVariant(w.project.id, c.id, {
+        variant: { ...v, readiness: "ready" },
+        baseRevision: v.revision,
+        baseHash: v.bodyHash,
+      })
+      .variants.at(-1)!;
+    const account = workspace
+      .addAccount(w.project.id, {
+        platform: "xiaohongshu",
+        label: "验收",
+        externalId: "",
+        accountType: "profile",
+      })
+      .accounts.at(-1)!;
+    const target = workspace
+      .addTarget(w.project.id, {
+        accountId: account.id,
+        label: "本地验收",
+        kind: "profile",
+      })
+      .targets.at(-1)!;
+    const [job] = await workspace.schedule(w.project.id, {
+      contentId: c.id,
+      variantId: v.id,
+      targetIds: [target.id],
+      scheduledAtUtc: "2030-01-01T00:00:00Z",
+      timezone: "Asia/Shanghai",
+    });
+    const exported = workspace.exportJob(w.project.id, job.id);
+    const m = readJson<{
+      segments: Variant["segments"];
+      media: Record<string, { file: string }>;
+    }>(path.join(exported, "manifest.json"));
+    assert.deepEqual(
+      m.segments.filter((s) => s.type === "image").map((s) => s.assetId),
+      [second, first],
+    );
+    const info = readFileSync(path.join(exported, "发布信息.md"), "utf8");
+    assert.ok(info.includes(`封面文件：${m.media[second].file}`));
+    assert.ok(
+      info.includes(`保留的封面文件（当前类型不使用）：${m.media[first].file}`),
+    );
+  } finally {
+    workspace.closeAll();
+  }
+});
+
 test("Full Access applies on start and resume; task output never overwrites a draft", async () => {
   const { root, workspace, w } = await setup();
   const service = new CodexService(workspace, () => {});

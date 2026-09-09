@@ -23,6 +23,7 @@ import { ConnectionStore } from "../services/publishing/store";
 import { MockAdapter } from "../services/publishing/mock";
 import { officialAdapters } from "../services/publishing/platforms";
 import { connectionSchema } from "../contracts/automation";
+import { coverRules } from "../contracts/covers";
 import { ThumbnailService } from "../services/thumbnails";
 import { WebLoginService } from "./web-login";
 import { z } from "zod";
@@ -120,6 +121,13 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
   if (method === "clipboard.copy") {
     const p = z.object({ text: z.string().max(200000) }).parse(data);
     await clipboard.writeText(p.text);
+    return true;
+  }
+  if (method === "covers.source") {
+    const { key } = z.object({ key: z.string() }).parse(data);
+    const source = coverRules.find((rule) => rule.key === key)?.source;
+    if (!source) throw new AppError("SOURCE_UNKNOWN", "未找到此封面的官方资料");
+    await shell.openExternal(source);
     return true;
   }
   if (method === "codex.connect") return codex.reconnect();
@@ -262,22 +270,32 @@ async function dispatch(method: string, raw: unknown): Promise<unknown> {
       .object({
         paths: z.array(z.string()).max(1000).optional(),
         mode: z.enum(["copy", "reference"]),
+        imagesOnly: z.boolean().optional(),
       })
       .parse(data);
     let paths = p.paths;
     if (!paths) {
       const r = await dialog.showOpenDialog(win, {
-        properties: ["openFile", "multiSelections"],
+        properties: p.imagesOnly
+          ? ["openFile"]
+          : ["openFile", "multiSelections"],
         filters: [
           {
-            name: "图片与视频",
-            extensions: ["jpg", "jpeg", "png", "webp", "mp4", "mov"],
+            name: p.imagesOnly ? "封面图片" : "图片与视频",
+            extensions: p.imagesOnly
+              ? ["jpg", "jpeg", "png", "webp"]
+              : ["jpg", "jpeg", "png", "webp", "mp4", "mov"],
           },
         ],
       });
       if (r.canceled) return [];
       paths = r.filePaths;
     }
+    if (
+      p.imagesOnly &&
+      paths.some((file) => !/\.(jpe?g|png|webp)$/i.test(file))
+    )
+      throw new AppError("INVALID_COVER", "封面请选择 JPEG、PNG 或 WebP 图片");
     return service.importAssets(projectId, paths, p.mode, (message) =>
       emit({ type: "import-progress", projectId, message }),
     );

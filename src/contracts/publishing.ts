@@ -14,6 +14,10 @@ const group = <T extends z.ZodRawShape>(shape: T) => {
   return schema.prefault({} as z.input<typeof schema>);
 };
 export const publishingSchema = z.object({
+  xiaohongshu: group({ format: z.enum(["images", "video"]).default("images") }),
+  wechat_official: group({
+    format: z.enum(["article", "images"]).default("article"),
+  }),
   youtube: group({
     format: z.enum(["video", "shorts"]).default("video"),
     visibility: z.enum(["", "public", "unlisted", "private"]).default(""),
@@ -54,6 +58,14 @@ export type NativePlatform = keyof Publishing;
 export const defaultPublishing = () => publishingSchema.parse({});
 type Format = { value: string; label: string; composer: ComposerMode };
 export const publishingFormats: Record<NativePlatform, Format[]> = {
+  xiaohongshu: [
+    { value: "images", label: "图文笔记", composer: "note" },
+    { value: "video", label: "视频笔记", composer: "video" },
+  ],
+  wechat_official: [
+    { value: "article", label: "长文章（图文消息）", composer: "article" },
+    { value: "images", label: "图片消息", composer: "photo" },
+  ],
   youtube: [
     { value: "video", label: "视频投稿", composer: "video" },
     { value: "shorts", label: "Shorts", composer: "short_video" },
@@ -249,6 +261,15 @@ export function publicationWarnings(
   const mode = composerFor(v, definition);
   const bound = assets.filter((a) => v.assetIds.includes(a.id));
   const warnings: string[] = [];
+  if (
+    ((platform === "xiaohongshu" && p.xiaohongshu.format === "images") ||
+      (platform === "wechat_official" &&
+        p.wechat_official.format === "images")) &&
+    bound.some((a) => a.kind === "video")
+  )
+    warnings.push(
+      "当前为图片类型，仍有关联视频。切换类型会保留素材，请检查正文图片与视频的用途。",
+    );
   if (["video", "short_video"].includes(mode)) {
     if (!bound.some((a) => a.kind === "video"))
       warnings.push("尚未选择视频。图片可用作封面，不能代替视频投稿。");

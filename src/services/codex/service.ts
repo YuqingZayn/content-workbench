@@ -10,6 +10,7 @@ import type {
 } from "../../contracts/model";
 import type { WorkspaceService } from "../workspace";
 import { composerFor, publicationFields } from "../../contracts/publishing";
+import { coverFields } from "../../contracts/covers";
 import {
   AppError,
   uuid,
@@ -366,7 +367,10 @@ export class CodexService {
         v && platform
           ? {
               composer: composerFor(v, platform),
-              fields: publicationFields(v, platform),
+              fields: [
+                ...publicationFields(v, platform),
+                ...coverFields(v, platform, w.assets),
+              ],
             }
           : undefined,
       allowedAssets: w.assets

@@ -2769,3 +2769,32 @@ a {
 .web-login-panel .primary { justify-self: start; }
 .web-login-status { padding: 20px; border: 1px solid var(--border); border-radius: 12px; overflow-wrap: anywhere; }
 .account-footer { flex-wrap: wrap; gap: 12px; }
+.cover-editor {
+  order: -2;
+  margin-bottom: 18px;
+  border: 1px solid var(--border, #dfe5e1);
+  border-radius: 14px;
+  padding: 16px;
+  min-width: 0;
+}
+.cover-rule-summary { margin: 10px 0; font-size: 13px; line-height: 1.65; }
+.cover-selection { display: flex; gap: 14px; align-items: center; margin: 14px 0; }
+.cover-thumbnail { width: 112px; height: 100px; flex-shrink: 0; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: var(--bg, #f1f4f2); }
+.cover-thumbnail img { width: 100%; height: 100%; object-fit: contain; }
+.cover-selection-info { min-width: 0; display: grid; gap: 8px; }
+.cover-selection-info strong { overflow-wrap: anywhere; font-size: 13px; }
+.cover-selection-info small { font-size: 12px; line-height: 1.6; }
+.cover-selection-info .button-row { flex-wrap: wrap; }
+.cover-picker { margin: 12px 0; }
+.cover-picker .asset-picker { max-height: 300px; overflow: auto; margin-top: 8px; }
+.cover-rules { margin-top: 12px; font-size: 12px; line-height: 1.65; }
+.cover-rules summary { cursor: pointer; }
+.cover-rules-table { max-height: 360px; overflow: auto; margin-top: 12px; }
+.cover-rules table { width: 100%; border-collapse: collapse; text-align: left; }
+.cover-rules th, .cover-rules td { padding: 9px; vertical-align: top; border-bottom: 1px solid var(--border, #dfe5e1); min-width: 95px; }
+.cover-rules a { color: var(--accent, #237453); white-space: nowrap; }
+.cover-usage { padding: 12px; margin-bottom: 14px; border: 1px solid var(--border, #dfe5e1); border-radius: 10px; font-size: 13px; }
+@media (max-width: 1000px) {
+  .cover-selection { align-items: flex-start; }
+  .cover-thumbnail { width: 80px; height: 80px; }
+}

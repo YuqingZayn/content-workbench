@@ -59,7 +59,6 @@ import {
   defaultPublishing,
   publicationSegments,
   publicationFormat,
-  nativePlatform,
   splitMessages,
 } from "../contracts/publishing";
 import { PublishingFields, PublishingSummary } from "./PublishingFields";
@@ -81,6 +80,13 @@ import {
   publishStatus,
 } from "./Automation";
 import { WebLoginPanel } from "./WebLogin";
+import { CoverEditor } from "./CoverEditor";
+import {
+  coverRuleFor,
+  coverUsageMap,
+  effectiveCoverId,
+  selectCover,
+} from "../contracts/covers";
 const api = window.workbench;
 const statusName: Record<string, string> = {
   ...publishStatus,
@@ -858,7 +864,14 @@ function ContentRow({
   onOpen: () => void;
 }) {
   const v = c.variants[0];
-  const a = w.assets.find((a) => a.id === (v?.coverId ?? v?.assetIds[0]));
+  const coverId = v
+    ? effectiveCoverId(
+        v,
+        getPlatformDefinition(w.platforms, v.platform),
+        w.assets,
+      )
+    : null;
+  const a = w.assets.find((a) => a.id === (coverId ?? v?.assetIds[0]));
   return (
     <button className="content-row" onClick={onOpen}>
       <div className="content-thumb">
@@ -1020,11 +1033,20 @@ function Editor({
         getPlatformDefinition(w.platforms, draft.platform),
       )
     : undefined;
-  const isStory =
-    draft &&
-    nativePlatform(getPlatformDefinition(w.platforms, draft.platform)) ===
-      "instagram" &&
-    (draft.publishing ?? defaultPublishing()).instagram.format === "story";
+  const coverRule = draft
+    ? coverRuleFor(
+        draft,
+        getPlatformDefinition(w.platforms, draft.platform),
+        w.assets,
+      )
+    : null;
+  const activeCoverId = draft
+    ? effectiveCoverId(
+        draft,
+        getPlatformDefinition(w.platforms, draft.platform),
+        w.assets,
+      )
+    : null;
   const bindings =
     draft?.assetIds
       .map((id) => w.assets.find((a) => a.id === id))
@@ -1143,16 +1165,24 @@ function Editor({
                 </span>
               </div>
               <PublishingFields w={w} draft={draft} change={change} />
+              <CoverEditor
+                key={`${draft.id}:${coverRule?.key}`}
+                w={w}
+                draft={draft}
+                change={change}
+                refresh={refresh}
+                notice={notice}
+              />
               <PlatformFields w={w} draft={draft} change={change} />
               <div className="compose-media">
                 <div className="section-heading media-heading">
                   <h2>
                     {composer === "note"
-                      ? "笔记图片与封面"
+                      ? "正文图片"
                       : composer === "article"
-                        ? "文章封面与配图"
+                        ? "文章配图"
                         : composer === "video" || composer === "short_video"
-                          ? "视频与封面"
+                          ? "正文视频与素材"
                           : "关联素材"}{" "}
                     <span>{bindings.length}</span>
                   </h2>
@@ -1182,7 +1212,7 @@ function Editor({
                         <strong>{a.name}</strong>
                         <small>
                           {i + 1} · {a.kind === "image" ? "图片" : "视频"}
-                          {draft.coverId === a.id ? " · 封面" : ""}
+                          {activeCoverId === a.id ? " · 当前封面" : ""}
                         </small>
                       </div>
                       <div className="binding-actions">
@@ -1203,26 +1233,20 @@ function Editor({
                           <ArrowDown size={14} />
                         </button>
                         {a.kind === "image" &&
-                          !isStory &&
-                          !["post", "chat"].includes(composer) && (
+                          coverRule &&
+                          ["first_media", "independent", "review"].includes(
+                            coverRule.mode,
+                          ) && (
                             <button
                               className="icon"
-                              title="设为封面"
+                              title={
+                                coverRule.mode === "first_media"
+                                  ? "移到正文首位，作为封面"
+                                  : "同时用作独立封面（保留正文关联）"
+                              }
                               aria-label={`设置封面 ${i + 1}`}
                               onClick={() =>
-                                change({
-                                  coverId: a.id,
-                                  ...(["note", "photo"].includes(composer)
-                                    ? {
-                                        assetIds: [
-                                          a.id,
-                                          ...draft.assetIds.filter(
-                                            (id) => id !== a.id,
-                                          ),
-                                        ],
-                                      }
-                                    : {}),
-                                })
+                                change(selectCover(draft, coverRule, a.id))
                               }
                             >
                               <ImageIcon size={14} />
@@ -1236,8 +1260,6 @@ function Editor({
                               assetIds: draft.assetIds.filter(
                                 (id) => id !== a.id,
                               ),
-                              coverId:
-                                draft.coverId === a.id ? null : draft.coverId,
                             })
                           }
                         >
@@ -2345,9 +2367,12 @@ function Assets({
     [crop, setCrop] = useState(false),
     [rect, setRect] = useState({ x: 0, y: 0, width: 100, height: 100 });
   const video = useRef<HTMLVideoElement>(null);
+  const usageByAsset = coverUsageMap(w);
   const filtered = w.assets.filter(
     (a) =>
-      (filter === "all" || a.kind === filter) &&
+      (filter === "all" ||
+        a.kind === filter ||
+        (filter === "cover" && !!usageByAsset.get(a.id)?.length)) &&
       a.name.toLowerCase().includes(query.toLowerCase()),
   );
   const call = async (fn: () => Promise<unknown>) => {
@@ -2429,6 +2454,7 @@ function Assets({
             ["all", "全部"],
             ["image", "图片"],
             ["video", "视频"],
+            ["cover", "封面"],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -2534,6 +2560,9 @@ function Assets({
                   {(a.bytes / 1024 / 1024).toFixed(1)} MB ·{" "}
                   {a.storageMode === "copy" ? "项目素材" : "外部引用"}
                   {a.derivedFrom ? " · 衍生副本" : ""}
+                  {usageByAsset.get(a.id)?.length
+                    ? ` · 用作封面 ${usageByAsset.get(a.id)!.length} 处`
+                    : ""}
                 </small>
               </div>
             </button>
@@ -2563,6 +2592,14 @@ function Assets({
       )}
       {selected && (
         <Modal wide title={selected.name} onClose={() => setSelected(null)}>
+          {!!usageByAsset.get(selected.id)?.length && (
+            <div className="cover-usage">
+              <strong>封面使用位置</strong>
+              {usageByAsset.get(selected.id)!.map((usage, i) => (
+                <p key={i}>{usage}</p>
+              ))}
+            </div>
+          )}
           <div className="media-viewer">
             {selected.kind === "image" && !original ? (
               <AssetPreview

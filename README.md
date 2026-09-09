@@ -4,6 +4,8 @@
 
 当前为 **V0.2.1 开发版，dev 分支**。本地与模拟验收已完成；Discord、X、Instagram 专业账号、Facebook Page 的图文适配器已实现，真实平台发送尚未验收。本次不生成安装包。其他平台继续辅助发布。
 
+2026-09-09 新增 [封面统一管理与平台差异](docs/platform-covers.md)：编辑时直接导入或复用封面图片，区分正文首图、独立视频/文章封面与链接预览；素材库可筛选封面、查看使用位置，发布包保存对应说明。
+
 ## 怎么启动软件
 
 需要 Windows x64、Node.js 22.18 或更高版本、npm。在此 README 所在的 `content-workbench` 目录打开 PowerShell：

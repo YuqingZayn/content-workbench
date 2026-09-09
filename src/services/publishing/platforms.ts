@@ -37,6 +37,13 @@ async function images(
     throw new PublishError(
       "自动连接仅使用单条正文和有序媒体，请先清除自定义消息段或使用辅助包",
     );
+  if (
+    input.variant.coverId &&
+    !input.media.some((file) => file.id === input.variant.coverId)
+  )
+    throw new PublishError(
+      "此自动连接尚不支持单独提交封面，请清除保留的独立封面或使用辅助发布包",
+    );
   if (input.media.length > max)
     throw new PublishError(
       `此连接最多发送 ${max} 张图片，请拆分版本或使用辅助包`,

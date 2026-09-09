@@ -40,6 +40,7 @@ import {
   type Platform,
 } from "../contracts/model";
 import { StateDatabase } from "../storage/database";
+import { coverFields, effectiveCoverId } from "../contracts/covers";
 import {
   defaultPublishing,
   publicationBody,
@@ -582,7 +583,12 @@ export class WorkspaceService {
   ) {
     const { project } = this.context(id, true);
     let assets = this.list(id, "assets", assetSchema);
-    const result: { name: string; status: string; message?: string }[] = [];
+    const result: {
+      name: string;
+      status: string;
+      assetId?: string;
+      message?: string;
+    }[] = [];
     const files: string[] = [];
     // Reopening an indexed project must not reread every large source file.
     const registeredPaths = new Map(
@@ -624,7 +630,11 @@ export class WorkspaceService {
             info.size === known.bytes &&
             Math.abs(info.mtimeMs - known.modifiedMs) <= 2;
           if (unchanged) {
-            result.push({ name: path.basename(file), status: "reused" });
+            result.push({
+              name: path.basename(file),
+              status: "reused",
+              assetId: known.id,
+            });
             continue;
           }
         }
@@ -660,7 +670,11 @@ export class WorkspaceService {
         assets = this.list(id, "assets", assetSchema);
         const duplicate = assets.find((a) => a.sha256 === digest);
         if (duplicate) {
-          result.push({ name: path.basename(file), status: "reused" });
+          result.push({
+            name: path.basename(file),
+            status: "reused",
+            assetId: duplicate.id,
+          });
           continue;
         }
         const aid = uuid();
@@ -703,7 +717,11 @@ export class WorkspaceService {
           assets.push(asset);
           this.saveList(id, "assets", assets);
         }
-        result.push({ name: asset.name, status: "imported" });
+        result.push({
+          name: asset.name,
+          status: "imported",
+          assetId: assets.find((a) => a.sha256 === digest)?.id ?? aid,
+        });
       } catch (e) {
         if (temp) await unlink(temp).catch(() => {});
         result.push({
@@ -916,7 +934,21 @@ export class WorkspaceService {
       platform,
       v.assetIds.map((aid) => this.mediaPath(id, aid).asset),
     );
-    const publishingFields = publicationFields(v, platform);
+    const snapshotAssets = assetIds.map((aid) => this.mediaPath(id, aid).asset);
+    const activeCover = effectiveCoverId(v, platform, snapshotAssets);
+    const publishingFields: [string, string][] = [
+      ...publicationFields(v, platform),
+      ...coverFields(v, platform, snapshotAssets),
+      ["封面文件", activeCover ? (media[activeCover]?.file ?? "") : ""],
+      ...(v.coverId && v.coverId !== activeCover
+        ? [
+            [
+              "保留的封面文件（当前类型不使用）",
+              media[v.coverId]?.file ?? "",
+            ] as [string, string],
+          ]
+        : []),
+    ];
     const body = publicationBody(v, platform);
     const snapshot = {
       schemaVersion: 1,
@@ -1022,7 +1054,13 @@ export class WorkspaceService {
           ([key, value]) => `${key}：${value}`,
         ),
         `话题 / 关键词：${snapshot.variant.tags.join(" ")}`,
-        `封面文件：${snapshot.variant.coverId ? (snapshot.media[snapshot.variant.coverId]?.file ?? "") : ""}`,
+        ...((snapshot.publishingFields ?? []).some(
+          ([key]) => key === "封面文件",
+        )
+          ? []
+          : [
+              `封面文件：${snapshot.variant.coverId ? (snapshot.media[snapshot.variant.coverId]?.file ?? "") : ""}`,
+            ]),
         ...(article &&
         (snapshot.platform?.composer === "article" ||
           article.author ||

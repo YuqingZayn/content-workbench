@@ -22,6 +22,7 @@ import {
   publicationSegments,
 } from "../contracts/publishing";
 import { AssetPreview, previewUrl } from "./AssetPreview";
+import { effectiveCoverId } from "../contracts/covers";
 
 export const composerHeadings: Record<ComposerMode, string> = {
   post: "编辑帖子",
@@ -67,7 +68,11 @@ export function PlatformFields({
   const platform = nativePlatform(definition);
   const publishing = draft.publishing ?? defaultPublishing();
   const forum = platform === "discord" && publishing.discord.format === "forum";
-  const publicTitle = showsTitle(mode) || platform === "youtube" || forum;
+  const publicTitle =
+    showsTitle(mode) ||
+    platform === "youtube" ||
+    platform === "wechat_official" ||
+    forum;
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const format = (before: string, after = "") => {
     const area = bodyRef.current;
@@ -93,9 +98,13 @@ export function PlatformFields({
         ? "论坛标题"
         : mode === "article"
           ? "文章标题"
-          : mode === "video" || platform === "youtube"
-            ? "视频标题"
-            : "笔记标题"}
+          : platform === "wechat_official"
+            ? "图片消息标题"
+            : platform === "xiaohongshu"
+              ? "笔记标题"
+              : mode === "video" || platform === "youtube"
+                ? "视频标题"
+                : "笔记标题"}
       <input
         aria-label="版本标题"
         value={draft.title}
@@ -107,7 +116,8 @@ export function PlatformFields({
     <label>
       {forum
         ? "论坛标签"
-        : mode === "video" || platform === "youtube"
+        : platform !== "xiaohongshu" &&
+            (mode === "video" || platform === "youtube")
           ? "视频关键词"
           : "话题标签"}
       <input
@@ -375,13 +385,10 @@ export function PlatformPreview({
   const isStory = platform === "instagram" && p.instagram.format === "story";
   const body = publicationBody(draft, definition);
   const [index, setIndex] = useState(0);
-  const cover = w.assets.find(
-    (a) => a.id === draft.coverId && a.kind === "image",
-  );
-  const ordered =
-    cover && ["note", "photo", "article"].includes(mode) && !isStory
-      ? [cover, ...bindings.filter((a) => a.id !== cover.id)]
-      : bindings;
+  const coverId = effectiveCoverId(draft, definition, w.assets);
+  const cover = w.assets.find((a) => a.id === coverId && a.kind === "image");
+  // Carousel order is always the actual body order, including after a reorder.
+  const ordered = bindings;
   const currentIndex = Math.min(index, Math.max(0, ordered.length - 1));
   const media = ordered[currentIndex];
   const video = bindings.find((a) => a.kind === "video");
@@ -456,13 +463,11 @@ export function PlatformPreview({
             <div className="article-digest">{draft.article.digest}</div>
           )}
           <ArticleText text={draft.body || "文章正文会显示在这里。"} />
-          {bindings
-            .filter((a) => a.id !== cover?.id)
-            .map((a) => (
-              <div className="article-inline-media" key={a.id}>
-                <PreviewMedia asset={a} w={w} />
-              </div>
-            ))}
+          {bindings.map((a) => (
+            <div className="article-inline-media" key={a.id}>
+              <PreviewMedia asset={a} w={w} cover={cover} />
+            </div>
+          ))}
           {draft.article.sourceUrl && (
             <p className="article-source">
               阅读原文 · {draft.article.sourceUrl}
@@ -604,7 +609,10 @@ export function PlatformPreview({
           <small className="muted">{w.project.name}</small>
           <p>{body || "视频描述会显示在这里。"}</p>
           {(mode === "video" || platform === "youtube") && (
-            <div className="hashtags">关键词：{draft.tags.join(" · ")}</div>
+            <div className="hashtags">
+              {platform === "xiaohongshu" ? "话题（发布时选择）：" : "关键词："}
+              {draft.tags.join(" · ")}
+            </div>
           )}
         </div>
       </div>
@@ -628,7 +636,12 @@ export function PlatformPreview({
       )}
       {mode === "note" && account}
       <div className="preview-copy">
-        {mode === "note" && <h3>{draft.title || "笔记标题"}</h3>}
+        {(mode === "note" || platform === "wechat_official") && (
+          <h3>
+            {draft.title ||
+              (platform === "wechat_official" ? "图片消息标题" : "笔记标题")}
+          </h3>
+        )}
         <p>{body || "配文会显示在这里。"}</p>
       </div>
     </div>
